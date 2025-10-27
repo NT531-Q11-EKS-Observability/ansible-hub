@@ -1,0 +1,26 @@
+tempo:
+  storage:
+    trace:
+      backend: local
+      local:
+        path: /var/tempo
+  server:
+    http_listen_port: 3100
+  receiver:
+    otlp:
+      protocols:
+        http:
+          endpoint: 0.0.0.0:4318
+        grpc:
+          endpoint: 0.0.0.0:4317
+persistence:
+  enabled: false
+service:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 3100
+    - name: otlp-http
+      port: 4318
+    - name: otlp-grpc
+      port: 4317

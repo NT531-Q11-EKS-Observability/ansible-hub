@@ -1,0 +1,56 @@
+grafana:
+  enabled: true
+  adminUser: {{ grafana_admin_user | quote }}
+  adminPassword: {{ grafana_admin_password | quote }}
+  service:
+    type: ClusterIP
+    port: 80
+  persistence:
+    enabled: true
+    storageClassName: {{ storage_class }}
+    size: {{ grafana_storage }}
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      access: proxy
+      url: http://loki:3100
+      isDefault: false
+    - name: Tempo
+      type: tempo
+      access: proxy
+      url: http://tempo:3100
+      jsonData:
+        httpMethod: GET
+        tracesToLogsV2:
+          datasourceUid: grafana-loki-datasource
+          filterByTraceID: true
+          filterBySpanID: true
+          tags:
+            - "job"
+
+prometheus:
+  prometheusSpec:
+    retention: 7d
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: {{ storage_class }}
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: {{ prometheus_storage }}
+    podMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+alertmanager:
+  enabled: true
+
+kube-state-metrics:
+  enabled: true
+
+nodeExporter:
+  enabled: true
+
+crds:
+  enabled: true

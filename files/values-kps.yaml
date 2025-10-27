@@ -1,0 +1,21 @@
+grafana:
+  adminUser: admin
+  adminPassword: admin123
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: false
+  persistence:
+    enabled: false
+
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    replicas: 1
+
+prometheus:
+  prometheusSpec:
+    replicas: 1
+    retention: 24h
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false

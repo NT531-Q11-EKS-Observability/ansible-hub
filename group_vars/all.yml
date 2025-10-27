@@ -1,0 +1,16 @@
+
+monitoring_ns: monitoring
+app_ns: petclinic
+
+grafana_admin_user: admin
+grafana_admin_password: admin123
+
+# Chart versions (can be adjusted as needed)
+kps_chart_version: "66.1.0"        # kube-prometheus-stack
+loki_chart_version: "6.6.3"
+promtail_chart_version: "6.15.3"
+tempo_chart_version: "1.11.2"
+
+# Feature toggles
+deploy_hpa_examples: true
+deploy_k6_job: true

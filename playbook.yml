@@ -1,0 +1,54 @@
+---
+- name: Deploy Observability tools into EKS (final)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Ensure namespaces exist
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ item }}"
+      loop:
+        - monitoring
+        - petclinic
+
+    - name: Add Helm repos
+      kubernetes.core.helm_repository:
+        name: "{{ item.name }}"
+        repo_url: "{{ item.url }}"
+      loop:
+        - { name: "grafana", url: "https://grafana.github.io/helm-charts" }
+        - { name: "prometheus-community", url: "https://prometheus-community.github.io/helm-charts" }
+
+    - name: Update Helm repos
+      command: helm repo update
+
+    - name: Install kube-prometheus-stack (Prometheus + Grafana + Alertmanager)
+      kubernetes.core.helm:
+        name: kps
+        chart_ref: prometheus-community/kube-prometheus-stack
+        release_namespace: monitoring
+        values_files:
+          - files/values-kps.yaml
+        create_namespace: false
+        wait: true
+        timeout: 900s
+        atomic: true
+
+    - name: Install Loki (for logs)
+      tags: ["install_loki"]
+      kubernetes.core.helm:
+        name: loki
+        chart_ref: grafana/loki
+        release_namespace: monitoring
+        values_files:
+          - files/values-loki.yaml
+        create_namespace: false
+        wait: true
+        timeout: 900s
+        atomic: true
