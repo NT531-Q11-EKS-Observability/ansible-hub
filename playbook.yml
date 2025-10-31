@@ -1,54 +1,131 @@
 ---
-- name: Deploy Observability tools into EKS (final)
+- name: Observability Stack for EKS - Scenario 1 (Auto Scaling Pod + Node)
   hosts: localhost
   connection: local
   gather_facts: false
 
+  vars:
+    kube_context: "eks-observability"
+    ns_monitoring: "monitoring"
+
   tasks:
-    - name: Ensure namespaces exist
+    # -------------------- 1. Namespace & Repo --------------------
+    - name: Ensure monitoring namespace exists
+      kubernetes.core.k8s:
+        api_version: v1
+        kind: Namespace
+        name: "{{ ns_monitoring }}"
+        state: present
+
+    - name: Add Helm repositories
+      community.kubernetes.helm_repository:
+        name: "{{ item.name }}"
+        repo_url: "{{ item.url }}"
+      loop:
+        - { name: prometheus-community, url: "https://prometheus-community.github.io/helm-charts" }
+        - { name: grafana,               url: "https://grafana.github.io/helm-charts" }
+
+    # -------------------- 2. Metrics Server --------------------
+    - name: Install metrics-server (for HPA)
+      community.kubernetes.helm:
+        name: metrics-server
+        chart_ref: bitnami/metrics-server
+        release_namespace: kube-system
+        wait: true
+
+    # -------------------- 3. Prometheus + Grafana --------------------
+    - name: Install kube-prometheus-stack
+      community.kubernetes.helm:
+        name: kps
+        chart_ref: prometheus-community/kube-prometheus-stack
+        release_namespace: "{{ ns_monitoring }}"
+        values: "{{ lookup('file', 'files/values-kps.yaml') | from_yaml }}"
+        wait: true
+
+    # -------------------- 4. Loki + Promtail + Tempo --------------------
+    - name: Install Loki
+      community.kubernetes.helm:
+        name: loki
+        chart_ref: grafana/loki
+        release_namespace: "{{ ns_monitoring }}"
+        values: "{{ lookup('file', 'files/values-loki.yaml') | from_yaml }}"
+        wait: true
+
+    - name: Install Promtail
+      community.kubernetes.helm:
+        name: promtail
+        chart_ref: grafana/promtail
+        release_namespace: "{{ ns_monitoring }}"
+        values: "{{ lookup('file', 'files/values-promtail.yaml') | from_yaml }}"
+        wait: true
+
+    - name: Install Tempo
+      community.kubernetes.helm:
+        name: tempo
+        chart_ref: grafana/tempo
+        release_namespace: "{{ ns_monitoring }}"
+        values: "{{ lookup('file', 'files/values-tempo.yaml') | from_yaml }}"
+        wait: true
+
+    # -------------------- 5. Icinga2 --------------------
+    - name: Install Icinga2 monitoring
+      community.kubernetes.helm:
+        name: icinga2
+        chart_ref: icinga/icinga2
+        release_namespace: "{{ ns_monitoring }}"
+        wait: true
+        create_namespace: false
+        values:
+          persistence:
+            enabled: false
+          service:
+            type: ClusterIP
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+    # -------------------- 6. Grafana provisioning --------------------
+    - name: Create Grafana provisioning ConfigMap
       kubernetes.core.k8s:
         state: present
         definition:
           apiVersion: v1
-          kind: Namespace
+          kind: ConfigMap
           metadata:
-            name: "{{ item }}"
-      loop:
-        - monitoring
-        - petclinic
+            name: grafana-provisioning
+            namespace: "{{ ns_monitoring }}"
+            labels:
+              grafana_datasource: "1"
+              grafana_dashboard: "1"
+          data:
+            datasources.yaml: "{{ lookup('file', 'files/grafana/provisioning/datasources.yaml') }}"
+            dashboards.yaml: "{{ lookup('file', 'files/grafana/provisioning/dashboards.yaml') }}"
 
-    - name: Add Helm repos
-      kubernetes.core.helm_repository:
-        name: "{{ item.name }}"
-        repo_url: "{{ item.url }}"
-      loop:
-        - { name: "grafana", url: "https://grafana.github.io/helm-charts" }
-        - { name: "prometheus-community", url: "https://prometheus-community.github.io/helm-charts" }
+    - name: Load Scenario1 dashboard
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: grafana-dashboard-scenario1
+            namespace: "{{ ns_monitoring }}"
+            labels:
+              grafana_dashboard: "1"
+          data:
+            scenario1-overview.json: "{{ lookup('file', 'files/grafana/dashboards/scenario1-overview.json') }}"
 
-    - name: Update Helm repos
-      command: helm repo update
+    # -------------------- 7. Cluster Autoscaler metrics --------------------
+    - name: Expose Cluster Autoscaler metrics
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('file', 'manifests/service-cluster-autoscaler.yaml') | from_yaml }}"
 
-    - name: Install kube-prometheus-stack (Prometheus + Grafana + Alertmanager)
-      kubernetes.core.helm:
-        name: kps
-        chart_ref: prometheus-community/kube-prometheus-stack
-        release_namespace: monitoring
-        values_files:
-          - files/values-kps.yaml
-        create_namespace: false
-        wait: true
-        timeout: 900s
-        atomic: true
-
-    - name: Install Loki (for logs)
-      tags: ["install_loki"]
-      kubernetes.core.helm:
-        name: loki
-        chart_ref: grafana/loki
-        release_namespace: monitoring
-        values_files:
-          - files/values-loki.yaml
-        create_namespace: false
-        wait: true
-        timeout: 900s
-        atomic: true
+    - name: Create ServiceMonitor for Cluster Autoscaler
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('file', 'manifests/servicemonitor-cluster-autoscaler.yaml') | from_yaml }}"
