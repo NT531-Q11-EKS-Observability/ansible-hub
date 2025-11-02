@@ -110,24 +110,20 @@
         state: present
         src: "manifests/icinga-service.yaml"
 
-    # -------------------- 6️⃣ Grafana provisioning --------------------
-    - name: Create Grafana provisioning ConfigMap
+    # -------------------- 6️⃣ Grafana Provisioning --------------------
+
+    - name: Create Grafana provisioning ConfigMap (Datasources)
       kubernetes.core.k8s:
         state: present
-        definition:
-          apiVersion: v1
-          kind: ConfigMap
-          metadata:
-            name: grafana-provisioning
-            namespace: "{{ ns_monitoring }}"
-            labels:
-              grafana_datasource: "1"
-              grafana_dashboard: "1"
-          data:
-            datasources.yaml: "{{ lookup('file', 'files/grafana/provisioning/datasources.yaml') }}"
-            dashboards.yaml: "{{ lookup('file', 'files/grafana/provisioning/dashboards.yaml') }}"
+        definition: "{{ lookup('file', 'files/grafana/provisioning/datasources-configmap.yaml') | from_yaml }}"
 
-    - name: Load Scenario1 dashboard
+    - name: Create Grafana provisioning ConfigMap (Dashboards)
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('file', 'files/grafana/provisioning/dashboards-configmap.yaml') | from_yaml }}"
+
+    # -------------------- 7️⃣ Load Grafana Dashboard --------------------
+    - name: Load Scenario1 Grafana dashboard
       kubernetes.core.k8s:
         state: present
         definition:
@@ -139,9 +135,9 @@
             labels:
               grafana_dashboard: "1"
           data:
-            scenario1-overview.json: "{{ lookup('file', 'files/grafana/dashboards/scenario1-overview.json') }}"
+            scenario1-overview.json: "{{ lookup('file', 'files/grafana/dashboards/scenario1-overview.json') | to_json | quote }}"
 
-    # -------------------- 7️⃣ Cluster Autoscaler metrics --------------------
+    # -------------------- 8. Cluster Autoscaler metrics --------------------
     - name: Expose Cluster Autoscaler metrics
       kubernetes.core.k8s:
         state: present
