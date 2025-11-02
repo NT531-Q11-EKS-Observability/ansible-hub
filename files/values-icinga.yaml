@@ -1,0 +1,36 @@
+replicaCount: 1
+
+image:
+  repository: icinga/icinga2
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 5665
+
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+  hosts:
+    - host: icinga.tienphatng237.it.com
+      paths:
+        - /
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+persistence:
+  enabled: false
+
+monitoring:
+  enabled: true
+  prometheusExporter: true
