@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: icinga2
+  namespace: monitoring
+  labels:
+    app: icinga2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: icinga2
+  template:
+    metadata:
+      labels:
+        app: icinga2
+    spec:
+      containers:
+        - name: icinga2
+          image: jordan/icinga2:latest
+          ports:
+            - containerPort: 5665
+          env:
+            - name: ICINGA2_API_USER
+              value: "admin"
+            - name: ICINGA2_API_PASSWORD
+              value: "admin"
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: icinga2-data
+              mountPath: /data
+      volumes:
+        - name: icinga2-data
+          emptyDir: {}

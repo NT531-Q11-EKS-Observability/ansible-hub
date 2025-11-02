@@ -100,10 +100,15 @@
         timeout: 0
 
     # -------------------- 5️⃣ Icinga2 (manifest method - stable & portable) --------------------
-    - name: Deploy Icinga2 monitoring (manifest)
+    - name: Deploy Icinga2 Deployment
       kubernetes.core.k8s:
         state: present
-        definition: "{{ lookup('file', 'manifests/icinga2-deployment.yaml') | from_yaml }}"
+        src: "manifests/icinga-deployment.yaml"
+
+    - name: Deploy Icinga2 Service
+      kubernetes.core.k8s:
+        state: present
+        src: "manifests/icinga-service.yaml"
 
     # -------------------- 6️⃣ Grafana provisioning --------------------
     - name: Create Grafana provisioning ConfigMap
