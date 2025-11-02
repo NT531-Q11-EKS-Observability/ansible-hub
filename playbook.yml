@@ -9,7 +9,7 @@
     ns_monitoring: "monitoring"
 
   tasks:
-    # -------------------- 1. Namespace & Repo --------------------
+    # -------------------- 1️⃣ Namespace & Helm Repositories --------------------
     - name: Ensure monitoring namespace exists
       kubernetes.core.k8s:
         api_version: v1
@@ -18,63 +18,83 @@
         state: present
 
     - name: Add Helm repositories
-      community.kubernetes.helm_repository:
+      kubernetes.core.helm_repository:
         name: "{{ item.name }}"
         repo_url: "{{ item.url }}"
       loop:
         - { name: prometheus-community, url: "https://prometheus-community.github.io/helm-charts" }
         - { name: grafana,               url: "https://grafana.github.io/helm-charts" }
+        - { name: metrics-server,        url: "https://kubernetes-sigs.github.io/metrics-server/" }
+      ignore_errors: true
 
-    # -------------------- 2. Metrics Server --------------------
-    - name: Install metrics-server (for HPA)
-      community.kubernetes.helm:
+    # -------------------- 2️⃣ Metrics Server (official chart) --------------------
+    - name: Install official metrics-server
+      kubernetes.core.helm:
         name: metrics-server
-        chart_ref: bitnami/metrics-server
+        chart_ref: metrics-server/metrics-server
         release_namespace: kube-system
         wait: true
+        timeout: 600s
+        values:
+          args:
+            - --kubelet-insecure-tls
+            - --kubelet-preferred-address-types=InternalIP
+            - --metric-resolution=15s
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 200m
+              memory: 200Mi
 
-    # -------------------- 3. Prometheus + Grafana --------------------
+    # -------------------- 3️⃣ Prometheus + Grafana --------------------
     - name: Install kube-prometheus-stack
-      community.kubernetes.helm:
+      kubernetes.core.helm:
         name: kps
         chart_ref: prometheus-community/kube-prometheus-stack
         release_namespace: "{{ ns_monitoring }}"
         values: "{{ lookup('file', 'files/values-kps.yaml') | from_yaml }}"
-        wait: true
+        wait: false
+        timeout: 0
 
-    # -------------------- 4. Loki + Promtail + Tempo --------------------
+    # -------------------- 4️⃣ Loki + Promtail + Tempo --------------------
     - name: Install Loki
-      community.kubernetes.helm:
+      kubernetes.core.helm:
         name: loki
         chart_ref: grafana/loki
         release_namespace: "{{ ns_monitoring }}"
         values: "{{ lookup('file', 'files/values-loki.yaml') | from_yaml }}"
-        wait: true
+        wait: false
+        timeout: 0
 
     - name: Install Promtail
-      community.kubernetes.helm:
+      kubernetes.core.helm:
         name: promtail
         chart_ref: grafana/promtail
         release_namespace: "{{ ns_monitoring }}"
         values: "{{ lookup('file', 'files/values-promtail.yaml') | from_yaml }}"
-        wait: true
+        wait: false
+        timeout: 0
 
     - name: Install Tempo
-      community.kubernetes.helm:
+      kubernetes.core.helm:
         name: tempo
         chart_ref: grafana/tempo
         release_namespace: "{{ ns_monitoring }}"
         values: "{{ lookup('file', 'files/values-tempo.yaml') | from_yaml }}"
-        wait: true
+        wait: false
+        timeout: 0
 
-    # -------------------- 5. Icinga2 --------------------
+    # -------------------- 5️⃣ Icinga2 (optional, no wait) --------------------
     - name: Install Icinga2 monitoring
-      community.kubernetes.helm:
+      kubernetes.core.helm:
         name: icinga2
         chart_ref: icinga/icinga2
         release_namespace: "{{ ns_monitoring }}"
-        wait: true
         create_namespace: false
+        wait: false
+        timeout: 0
         values:
           persistence:
             enabled: false
@@ -87,8 +107,9 @@
             limits:
               cpu: 500m
               memory: 512Mi
+      ignore_errors: true
 
-    # -------------------- 6. Grafana provisioning --------------------
+    # -------------------- 6️⃣ Grafana provisioning --------------------
     - name: Create Grafana provisioning ConfigMap
       kubernetes.core.k8s:
         state: present
@@ -119,7 +140,7 @@
           data:
             scenario1-overview.json: "{{ lookup('file', 'files/grafana/dashboards/scenario1-overview.json') }}"
 
-    # -------------------- 7. Cluster Autoscaler metrics --------------------
+    # -------------------- 7️⃣ Cluster Autoscaler metrics --------------------
     - name: Expose Cluster Autoscaler metrics
       kubernetes.core.k8s:
         state: present
