@@ -17,15 +17,26 @@
         name: "{{ ns_monitoring }}"
         state: present
 
-    - name: Add Helm repositories
+    - name: Check if Helm repos already exist
+      ansible.builtin.command: helm repo list -o yaml
+      register: helm_repos
+      changed_when: false
+
+    - name: Add Helm repositories (skip existing)
       kubernetes.core.helm_repository:
         name: "{{ item.name }}"
         repo_url: "{{ item.url }}"
       loop:
         - { name: prometheus-community, url: "https://prometheus-community.github.io/helm-charts" }
-        - { name: grafana,               url: "https://grafana.github.io/helm-charts" }
-        - { name: metrics-server,        url: "https://kubernetes-sigs.github.io/metrics-server/" }
+        - { name: grafana, url: "https://grafana.github.io/helm-charts" }
+        - { name: metrics-server, url: "https://kubernetes-sigs.github.io/metrics-server/" }
+      when: item.name not in helm_repos.stdout
       ignore_errors: true
+
+    - name: Update Helm repositories
+      ansible.builtin.command: helm repo update
+      register: helm_update
+      changed_when: "'Update Complete' in helm_update.stdout"
 
     # -------------------- 2️⃣ Metrics Server (official chart) --------------------
     - name: Install official metrics-server
@@ -64,9 +75,11 @@
         name: loki
         chart_ref: grafana/loki
         release_namespace: "{{ ns_monitoring }}"
-        values: "{{ lookup('file', 'files/values-loki.yaml') | from_yaml }}"
+        values_files:
+        - files/values-loki.yaml
         wait: false
         timeout: 0
+
 
     - name: Install Promtail
       kubernetes.core.helm:
@@ -86,28 +99,11 @@
         wait: false
         timeout: 0
 
-    # -------------------- 5️⃣ Icinga2 (optional, no wait) --------------------
-    - name: Install Icinga2 monitoring
-      kubernetes.core.helm:
-        name: icinga2
-        chart_ref: icinga/icinga2
-        release_namespace: "{{ ns_monitoring }}"
-        create_namespace: false
-        wait: false
-        timeout: 0
-        values:
-          persistence:
-            enabled: false
-          service:
-            type: ClusterIP
-          resources:
-            requests:
-              cpu: 100m
-              memory: 256Mi
-            limits:
-              cpu: 500m
-              memory: 512Mi
-      ignore_errors: true
+    # -------------------- 5️⃣ Icinga2 (manifest method - stable & portable) --------------------
+    - name: Deploy Icinga2 monitoring (manifest)
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('file', 'manifests/icinga2-deployment.yaml') | from_yaml }}"
 
     # -------------------- 6️⃣ Grafana provisioning --------------------
     - name: Create Grafana provisioning ConfigMap
