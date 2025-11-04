@@ -5,6 +5,7 @@ metadata:
   namespace: monitoring
   labels:
     app: grafana
+    grafana_datasource: "1"
 data:
   dashboards.yaml: |
     apiVersion: 1
@@ -14,5 +15,7 @@ data:
         folder: "Scenario 1 - Auto Scaling"
         type: file
         disableDeletion: false
+        editable: true
+        updateIntervalSeconds: 10
         options:
           path: /var/lib/grafana/dashboards

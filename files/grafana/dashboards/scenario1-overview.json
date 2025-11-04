@@ -2,89 +2,160 @@
   "id": null,
   "uid": "scenario1-overview",
   "title": "Scenario 1 - Auto Scaling Overview",
-  "tags": ["scenario1", "autoscaling"],
+  "tags": ["scenario1", "autoscaling", "eks"],
   "timezone": "browser",
   "schemaVersion": 36,
-  "version": 1,
+  "version": 5,
   "refresh": "10s",
   "panels": [
     {
       "type": "row",
-      "title": "Cluster Summary",
+      "title": "🧠 Node Resources Overview",
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU Usage per Node (%)",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "avg(rate(node_cpu_seconds_total{mode!=\"idle\"}[2m])) by (instance) * 100", "legendFormat": "{{instance}}" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 70 },
+              { "color": "red", "value": 90 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Memory Usage per Node (GB)",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / 1024 / 1024 / 1024",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "gigabytes" } },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 }
+    },
+
+    {
+      "type": "row",
+      "title": "📊 Cluster Summary",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 }
     },
     {
       "type": "stat",
       "title": "Nodes Ready",
       "datasource": "Prometheus",
       "targets": [
-        { "expr": "scenario1:node_ready", "legendFormat": "ready nodes" }
+        { "expr": "count(kube_node_status_condition{condition=\"Ready\",status=\"true\"})", "legendFormat": "ready nodes" }
       ],
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 }
-    },
-    {
-      "type": "stat",
-      "title": "HPA Desired / Current",
-      "datasource": "Prometheus",
-      "targets": [
-        { "expr": "scenario1:hpa_desired", "legendFormat": "desired" },
-        { "expr": "scenario1:hpa_current", "legendFormat": "current" }
-      ],
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 }
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 10 }
     },
     {
       "type": "stat",
       "title": "Pods Desired / Ready",
       "datasource": "Prometheus",
       "targets": [
-        { "expr": "scenario1:pod_desired", "legendFormat": "desired" },
-        { "expr": "scenario1:pod_ready", "legendFormat": "ready" }
+        { "expr": "sum(kube_deployment_spec_replicas)", "legendFormat": "desired" },
+        { "expr": "sum(kube_deployment_status_replicas_ready)", "legendFormat": "ready" }
       ],
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 }
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 10 }
     },
     {
       "type": "stat",
-      "title": "HTTP Request Rate",
+      "title": "HPA Desired / Current",
       "datasource": "Prometheus",
       "targets": [
-        { "expr": "sum(rate(http_requests_total[1m]))", "legendFormat": "req/s" }
+        { "expr": "sum(kube_horizontalpodautoscaler_status_desired_replicas)", "legendFormat": "desired" },
+        { "expr": "sum(kube_horizontalpodautoscaler_status_current_replicas)", "legendFormat": "current" }
       ],
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 }
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 10 }
     },
     {
       "type": "timeseries",
       "title": "CPU Usage (Total)",
       "datasource": "Prometheus",
       "targets": [
-        { "expr": "scenario1:cpu_usage", "legendFormat": "CPU cores" }
+        { "expr": "sum(rate(container_cpu_usage_seconds_total[2m]))", "legendFormat": "CPU cores" }
       ],
-      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 5 }
+      "fieldConfig": { "defaults": { "unit": "cores" } },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 14 }
     },
     {
       "type": "timeseries",
       "title": "Memory Usage (Total)",
       "datasource": "Prometheus",
       "targets": [
-        { "expr": "scenario1:mem_working_set / 1024 / 1024 / 1024", "legendFormat": "GB" }
+        { "expr": "sum(container_memory_working_set_bytes)/1024/1024/1024", "legendFormat": "Total (GB)" }
       ],
-      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 5 }
+      "fieldConfig": { "defaults": { "unit": "gigabytes" } },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 14 }
+    },
+
+    {
+      "type": "row",
+      "title": "⚙️ Auto Scaling Metrics (Pod + Node)",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 20 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Cluster Autoscaler Events",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "increase(cluster_autoscaler_scaled_up_nodes_total[5m])", "legendFormat": "Scaled Up" },
+        { "expr": "increase(cluster_autoscaler_scaled_down_nodes_total[5m])", "legendFormat": "Scaled Down" }
+      ],
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 21 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Pod Lifecycle (Created / Deleted)",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "increase(kube_pod_created[5m])", "legendFormat": "Created" },
+        { "expr": "increase(kube_pod_deleted[5m])", "legendFormat": "Deleted" }
+      ],
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 21 }
+    },
+
+    {
+      "type": "row",
+      "title": "📜 Logs & Alerts",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 }
     },
     {
       "type": "logs",
       "title": "Loki - Scaling Events",
       "datasource": "Loki",
       "targets": [
-        { "expr": "{namespace=\"petclinic\"} |= \"Scaled up\"" }
+        { "expr": "{namespace=\"petclinic\"} |= \"Scaled\"" }
       ],
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 }
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 }
     },
     {
       "type": "table",
       "title": "Icinga2 Alerts (Nodes / Pods)",
       "datasource": "Icinga2",
-      "targets": [{ "expr": "icinga2_host_state" }],
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 }
+      "targets": [
+        { "expr": "icinga2_host_state" }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 }
     }
   ]
 }

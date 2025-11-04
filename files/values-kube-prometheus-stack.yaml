@@ -9,6 +9,34 @@ grafana:
     enabled: true
     storageClassName: {{ storage_class }}
     size: {{ grafana_storage }}
+
+  # 🧩 Sidecar tự động nhận dashboards và datasources
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      folder: /var/lib/grafana/dashboards
+      searchNamespace: ALL
+    datasources:
+      enabled: true
+      label: grafana_datasource
+      searchNamespace: ALL
+
+  # 🧠 Provider hiển thị folder "Scenario 1 - Auto Scaling"
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: "Scenario1"
+          orgId: 1
+          folder: "Scenario 1 - Auto Scaling"
+          type: file
+          disableDeletion: false
+          updateIntervalSeconds: 10
+          options:
+            path: /var/lib/grafana/dashboards
+
+  # 🔗 Datasources mặc định
   additionalDataSources:
     - name: Loki
       type: loki

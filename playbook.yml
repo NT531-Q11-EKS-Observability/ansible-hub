@@ -110,7 +110,31 @@
         state: present
         src: "manifests/icinga-service.yaml"
 
-    # -------------------- 6️⃣ Grafana Provisioning --------------------
+    # -------------------- 6️⃣ Prometheus Recording Rules (Scenario 1) --------------------
+    - name: Apply PrometheusRule for Scenario 1 metrics
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('file', 'files/rules/prometheusrule-scenario1.yaml') | from_yaml }}"
+      register: scenario1_rules
+
+    - name: Wait for PrometheusRule to be registered
+      ansible.builtin.pause:
+        seconds: 10
+      when: scenario1_rules.changed
+
+    # -------------------- 7️⃣ Grafana Provisioning --------------------
+    - name: Clean up old Grafana ConfigMaps (if exist)
+      kubernetes.core.k8s:
+        state: absent
+        api_version: v1
+        kind: ConfigMap
+        name: "{{ item }}"
+        namespace: "{{ ns_monitoring }}"
+      loop:
+        - grafana-datasources
+        - grafana-dashboard-provider
+        - grafana-dashboard-scenario1
+      ignore_errors: true
 
     - name: Create Grafana provisioning ConfigMap (Datasources)
       kubernetes.core.k8s:
@@ -122,22 +146,26 @@
         state: present
         definition: "{{ lookup('file', 'files/grafana/provisioning/dashboards-configmap.yaml') | from_yaml }}"
 
-    # -------------------- 7️⃣ Load Grafana Dashboard --------------------
-    - name: Load Scenario1 Grafana dashboard
+    # -------------------- 8️⃣ Load Scenario 1 Dashboard --------------------
+    - name: Deploy Scenario 1 Grafana dashboard ConfigMap
       kubernetes.core.k8s:
         state: present
-        definition:
-          apiVersion: v1
-          kind: ConfigMap
-          metadata:
-            name: grafana-dashboard-scenario1
-            namespace: "{{ ns_monitoring }}"
-            labels:
-              grafana_dashboard: "1"
-          data:
-            scenario1-overview.json: "{{ lookup('file', 'files/grafana/dashboards/scenario1-overview.json') | to_json | quote }}"
+        definition: "{{ lookup('template', 'manifests/grafana-dashboards-cm.yaml') | from_yaml }}"
 
-    # -------------------- 8. Cluster Autoscaler metrics --------------------
+    - name: Restart Grafana pods to reload dashboard changes
+      kubernetes.core.k8s:
+        state: patched
+        kind: Deployment
+        name: kps-grafana
+        namespace: "{{ ns_monitoring }}"
+        definition:
+          spec:
+            template:
+              metadata:
+                annotations:
+                  redeploy-timestamp: "{{ lookup('pipe', 'date +%s') }}"
+
+    # -------------------- 9️⃣ Cluster Autoscaler metrics --------------------
     - name: Expose Cluster Autoscaler metrics
       kubernetes.core.k8s:
         state: present

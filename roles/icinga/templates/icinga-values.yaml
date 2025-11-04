@@ -1,0 +1,17 @@
+global:
+  securityContext:
+    runAsUser: 1000
+    fsGroup: 1000
+
+icingaweb2:
+  enabled: true
+  ingress:
+    enabled: true
+    className: alb
+    annotations:
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+    hosts:
+      - host: icingaweb.tienphatng237.it.com
+        paths:
+          - /

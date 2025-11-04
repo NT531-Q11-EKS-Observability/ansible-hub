@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kps-kube-state-metrics
+  namespace: monitoring
+  labels:
+    release: kps
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kube-state-metrics
+      app.kubernetes.io/instance: kps
+  namespaceSelector:
+    matchNames:
+      - monitoring
+  endpoints:
+    - port: http          # ⚠️ sửa lại đúng tên port của Service
+      path: /metrics
+      interval: 30s

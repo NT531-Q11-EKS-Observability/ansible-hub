@@ -1,0 +1,32 @@
+# ============================================================
+# ✅ values-metrics.yaml
+# Fixed: use Bitnami’s new registry for metrics-server
+# ============================================================
+global:
+  security:
+    allowInsecureImages: true
+
+image:
+  repository: registry.bitnami.com/containers/metrics-server
+  tag: 0.7.2-debian-12-r8
+  pullPolicy: IfNotPresent
+
+apiService:
+  create: true
+
+args:
+  - --kubelet-insecure-tls
+  - --kubelet-preferred-address-types=InternalIP
+  - --metric-resolution=15s
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 100Mi
+  limits:
+    cpu: 200m
+    memory: 200Mi
+
+service:
+  type: ClusterIP
+  port: 443

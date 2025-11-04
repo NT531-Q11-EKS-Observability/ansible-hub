@@ -1,0 +1,5 @@
+---
+- name: Deploy Icinga2 monitoring
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('file', 'manifests/icinga.yaml') | from_yaml }}"
