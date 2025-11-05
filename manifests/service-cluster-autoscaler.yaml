@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: cluster-autoscaler-metrics
+  name: cluster-autoscaler
   namespace: kube-system
   labels:
     app: cluster-autoscaler
 spec:
   selector:
-    app.kubernetes.io/name: cluster-autoscaler
+    app: cluster-autoscaler
   ports:
-    - name: http
+    - name: metrics
       port: 8085
       targetPort: 8085

@@ -5,21 +5,85 @@
   "tags": ["scenario1", "autoscaling", "eks"],
   "timezone": "browser",
   "schemaVersion": 36,
-  "version": 5,
-  "refresh": "10s",
+  "version": 7,
+  "refresh": "5s",
   "panels": [
+    {
+      "type": "row",
+      "title": "🌐 Namespace Resource Breakdown",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU Usage by Namespace (System / App / Monitor)",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"kube-system|kube-node-lease|kube-public\"}[2m]))",
+          "legendFormat": "System"
+        },
+        {
+          "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"petclinic|default|backend|frontend|gateway\"}[2m]))",
+          "legendFormat": "App"
+        },
+        {
+          "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"monitoring|observability|loki|tempo|grafana\"}[2m]))",
+          "legendFormat": "Monitor"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "cores",
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2 }
+        }
+      },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 1 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Memory Usage by Namespace (System / App / Monitor)",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(container_memory_working_set_bytes{namespace=~\"kube-system|kube-node-lease|kube-public\"}) / 1024 / 1024 / 1024",
+          "legendFormat": "System"
+        },
+        {
+          "expr": "sum(container_memory_working_set_bytes{namespace=~\"petclinic|default|backend|frontend|gateway\"}) / 1024 / 1024 / 1024",
+          "legendFormat": "App"
+        },
+        {
+          "expr": "sum(container_memory_working_set_bytes{namespace=~\"monitoring|observability|loki|tempo|grafana\"}) / 1024 / 1024 / 1024",
+          "legendFormat": "Monitor"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "gigabytes",
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2 }
+        }
+      },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 1 }
+    },
+
     {
       "type": "row",
       "title": "🧠 Node Resources Overview",
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 }
     },
     {
       "type": "timeseries",
       "title": "CPU Usage per Node (%)",
       "datasource": "Prometheus",
       "targets": [
-        { "expr": "avg(rate(node_cpu_seconds_total{mode!=\"idle\"}[2m])) by (instance) * 100", "legendFormat": "{{instance}}" }
+        {
+          "expr": "avg(rate(node_cpu_seconds_total{mode!=\"idle\"}[2m])) by (instance) * 100",
+          "legendFormat": "{{instance}}"
+        }
       ],
       "fieldConfig": {
         "defaults": {
@@ -27,14 +91,14 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
+              { "color": "green" },
               { "color": "orange", "value": 70 },
               { "color": "red", "value": 90 }
             ]
           }
         }
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 }
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 }
     },
     {
       "type": "timeseries",
@@ -42,19 +106,19 @@
       "datasource": "Prometheus",
       "targets": [
         {
-          "expr": "(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / 1024 / 1024 / 1024",
+          "expr": "(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes)/1024/1024/1024",
           "legendFormat": "{{instance}}"
         }
       ],
       "fieldConfig": { "defaults": { "unit": "gigabytes" } },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 }
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 }
     },
 
     {
       "type": "row",
       "title": "📊 Cluster Summary",
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 }
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 }
     },
     {
       "type": "stat",
@@ -63,7 +127,7 @@
       "targets": [
         { "expr": "count(kube_node_status_condition{condition=\"Ready\",status=\"true\"})", "legendFormat": "ready nodes" }
       ],
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 10 }
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 17 }
     },
     {
       "type": "stat",
@@ -73,7 +137,7 @@
         { "expr": "sum(kube_deployment_spec_replicas)", "legendFormat": "desired" },
         { "expr": "sum(kube_deployment_status_replicas_ready)", "legendFormat": "ready" }
       ],
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 10 }
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 17 }
     },
     {
       "type": "stat",
@@ -83,34 +147,23 @@
         { "expr": "sum(kube_horizontalpodautoscaler_status_desired_replicas)", "legendFormat": "desired" },
         { "expr": "sum(kube_horizontalpodautoscaler_status_current_replicas)", "legendFormat": "current" }
       ],
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 10 }
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 17 }
     },
     {
-      "type": "timeseries",
-      "title": "CPU Usage (Total)",
+      "type": "stat",
+      "title": "Pending Pods",
       "datasource": "Prometheus",
       "targets": [
-        { "expr": "sum(rate(container_cpu_usage_seconds_total[2m]))", "legendFormat": "CPU cores" }
+        { "expr": "sum(kube_pod_status_phase{phase=\"Pending\"})", "legendFormat": "pending" }
       ],
-      "fieldConfig": { "defaults": { "unit": "cores" } },
-      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 14 }
-    },
-    {
-      "type": "timeseries",
-      "title": "Memory Usage (Total)",
-      "datasource": "Prometheus",
-      "targets": [
-        { "expr": "sum(container_memory_working_set_bytes)/1024/1024/1024", "legendFormat": "Total (GB)" }
-      ],
-      "fieldConfig": { "defaults": { "unit": "gigabytes" } },
-      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 14 }
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 17 }
     },
 
     {
       "type": "row",
       "title": "⚙️ Auto Scaling Metrics (Pod + Node)",
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 20 }
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 21 }
     },
     {
       "type": "timeseries",
@@ -120,7 +173,7 @@
         { "expr": "increase(cluster_autoscaler_scaled_up_nodes_total[5m])", "legendFormat": "Scaled Up" },
         { "expr": "increase(cluster_autoscaler_scaled_down_nodes_total[5m])", "legendFormat": "Scaled Down" }
       ],
-      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 21 }
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 22 }
     },
     {
       "type": "timeseries",
@@ -130,23 +183,63 @@
         { "expr": "increase(kube_pod_created[5m])", "legendFormat": "Created" },
         { "expr": "increase(kube_pod_deleted[5m])", "legendFormat": "Deleted" }
       ],
-      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 21 }
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 22 }
+    },
+
+    {
+      "type": "row",
+      "title": "🚀 Application Performance (Locust + Prometheus)",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 28 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Latency (p95 / p99)",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(k6_http_req_duration_seconds_bucket[1m])) by (le))", "legendFormat": "p95" },
+        { "expr": "histogram_quantile(0.99, sum(rate(k6_http_req_duration_seconds_bucket[1m])) by (le))", "legendFormat": "p99" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 29 }
+    },
+    {
+      "type": "timeseries",
+      "title": "HTTP Throughput (req/s)",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "sum(rate(k6_http_reqs_total[1m]))", "legendFormat": "Requests/s" }
+      ],
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 29 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Error Rate (%)",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(k6_http_req_failed[1m])) / sum(rate(k6_http_reqs_total[1m])) * 100",
+          "legendFormat": "Error %"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent" } },
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 29 }
     },
 
     {
       "type": "row",
       "title": "📜 Logs & Alerts",
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 }
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 35 }
     },
     {
       "type": "logs",
       "title": "Loki - Scaling Events",
       "datasource": "Loki",
       "targets": [
-        { "expr": "{namespace=\"petclinic\"} |= \"Scaled\"" }
+        { "expr": "{namespace=\"petclinic\"} |= \"Scaled\" or |= \"scale\"" }
       ],
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 }
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 }
     },
     {
       "type": "table",
@@ -155,7 +248,7 @@
       "targets": [
         { "expr": "icinga2_host_state" }
       ],
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 }
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 }
     }
   ]
 }

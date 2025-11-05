@@ -1,0 +1,15 @@
+---
+- name: 🧠 Deploy Cluster Autoscaler via Helm
+  kubernetes.core.helm:
+    name: cluster-autoscaler
+    chart_ref: autoscaler/cluster-autoscaler
+    release_namespace: kube-system
+    create_namespace: false
+    values_files:
+      - "{{ playbook_dir }}/files/grafana/rules/values-cluster-autoscaler.yaml"
+    state: present
+    update_repo_cache: true
+  register: ca_result
+
+- debug:
+    msg: "✅ Cluster Autoscaler deployed: {{ ca_result }}"

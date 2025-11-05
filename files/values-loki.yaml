@@ -1,23 +1,18 @@
----
 # =========================================================
 # Loki - Lightweight Log Aggregation (for EKS Observability)
-# Compatible with grafana/loki Helm chart (SingleBinary mode)
 # =========================================================
 
 deploymentMode: SingleBinary
 
 loki:
   auth_enabled: false
-
   server:
     http_listen_port: 3100
     grpc_listen_port: 9095
     log_level: info
     log_format: logfmt
-
   commonConfig:
     replication_factor: 1
-
   schemaConfig:
     configs:
       - from: 2024-01-01
@@ -32,23 +27,27 @@ loki:
     boltdb_shipper:
       active_index_directory: /var/loki/index
       cache_location: /var/loki/cache
-      shared_store: filesystem
     filesystem:
       directory: /var/loki/chunks
+  ruler:
+    rule_path: /tmp/rules
+    storage:
+      type: local
+      local:
+        directory: /var/loki/rules
+    ring:
+      kvstore:
+        store: inmemory
+  analytics:
+    reporting_enabled: false
 
-  # ? Fix validate.yaml: bucketNames + backend type
+  # 🔧 ADD THIS BLOCK BACK FOR COMPATIBILITY
   storage:
     type: filesystem
     bucketNames:
       chunks: loki-chunks
       ruler: loki-ruler
       admin: loki-admin
-
-  ruler:
-    storage:
-      type: local
-      local:
-        directory: /var/loki/rules
 
 service:
   type: ClusterIP
@@ -85,5 +84,7 @@ read:
   replicas: 0
 write:
   replicas: 0
+
 gateway:
-  replicas: 1  #
+  enabled: true
+  replicas: 1
