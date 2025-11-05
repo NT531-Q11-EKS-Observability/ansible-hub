@@ -5,59 +5,55 @@
   gather_facts: false
 
   vars:
-    kube_context: "eks-observability"
-    ns_monitoring: "monitoring"
+    kube_context: "{{ kube_context | default('eks-observability') }}"
+    ns_monitoring: "{{ monitoring_ns | default('monitoring') }}"
+    app_ns: "{{ app_ns | default('petclinic') }}"
 
   tasks:
-    # -------------------- 1️⃣ Namespace & Helm Repositories --------------------
+    # -------------------- 1️⃣ Namespaces & Helm Repositories --------------------
     - name: Ensure monitoring namespace exists
       kubernetes.core.k8s:
         api_version: v1
         kind: Namespace
         name: "{{ ns_monitoring }}"
         state: present
+      tags: ['repos','bootstrap']
 
-    - name: Check if Helm repos already exist
-      ansible.builtin.command: helm repo list -o yaml
-      register: helm_repos
-      changed_when: false
-
-    - name: Add Helm repositories (skip existing)
+    - name: Add / Update Helm repositories
       kubernetes.core.helm_repository:
         name: "{{ item.name }}"
         repo_url: "{{ item.url }}"
       loop:
         - { name: prometheus-community, url: "https://prometheus-community.github.io/helm-charts" }
-        - { name: grafana, url: "https://grafana.github.io/helm-charts" }
-        - { name: metrics-server, url: "https://kubernetes-sigs.github.io/metrics-server/" }
-      when: item.name not in helm_repos.stdout
-      ignore_errors: true
+        - { name: grafana,              url: "https://grafana.github.io/helm-charts" }
+        - { name: metrics-server,       url: "https://kubernetes-sigs.github.io/metrics-server/" }
+        - { name: autoscaler,           url: "https://kubernetes.github.io/autoscaler" }
+      tags: ['repos','bootstrap']
 
     - name: Update Helm repositories
       ansible.builtin.command: helm repo update
-      register: helm_update
       changed_when: "'Update Complete' in helm_update.stdout"
+      register: helm_update
+      tags: ['repos','bootstrap']
 
-    # -------------------- 2️⃣ Metrics Server (official chart) --------------------
-    - name: Install official metrics-server
+    # -------------------- 2️⃣ Metrics Server --------------------
+    - name: Install metrics-server (official chart)
       kubernetes.core.helm:
         name: metrics-server
         chart_ref: metrics-server/metrics-server
         release_namespace: kube-system
         wait: true
         timeout: 600s
+        chart_version: "{{ metrics_server_chart_version }}"
         values:
           args:
             - --kubelet-insecure-tls
             - --kubelet-preferred-address-types=InternalIP
             - --metric-resolution=15s
           resources:
-            requests:
-              cpu: 100m
-              memory: 100Mi
-            limits:
-              cpu: 200m
-              memory: 200Mi
+            requests: { cpu: 100m, memory: 100Mi }
+            limits:   { cpu: 200m, memory: 200Mi }
+      tags: ['metrics']
 
     # -------------------- 3️⃣ Prometheus + Grafana --------------------
     - name: Install kube-prometheus-stack
@@ -65,50 +61,59 @@
         name: kps
         chart_ref: prometheus-community/kube-prometheus-stack
         release_namespace: "{{ ns_monitoring }}"
+        chart_version: "{{ kps_chart_version }}"
         values: "{{ lookup('file', 'files/values-kps.yaml') | from_yaml }}"
         wait: false
         timeout: 0
+      tags: ['kps']
 
     # -------------------- 4️⃣ Loki + Promtail + Tempo --------------------
-    - name: Install Loki
+    - name: Install Loki (single-binary)
       kubernetes.core.helm:
         name: loki
         chart_ref: grafana/loki
         release_namespace: "{{ ns_monitoring }}"
+        chart_version: "{{ loki_chart_version }}"
         values_files:
-        - files/values-loki.yaml
+          - files/values-loki.yaml
         wait: false
         timeout: 0
-
+      tags: ['loki']
 
     - name: Install Promtail
       kubernetes.core.helm:
         name: promtail
         chart_ref: grafana/promtail
         release_namespace: "{{ ns_monitoring }}"
+        chart_version: "{{ promtail_chart_version }}"
         values: "{{ lookup('file', 'files/values-promtail.yaml') | from_yaml }}"
         wait: false
         timeout: 0
+      tags: ['promtail']
 
     - name: Install Tempo
       kubernetes.core.helm:
         name: tempo
         chart_ref: grafana/tempo
         release_namespace: "{{ ns_monitoring }}"
+        chart_version: "{{ tempo_chart_version }}"
         values: "{{ lookup('file', 'files/values-tempo.yaml') | from_yaml }}"
         wait: false
         timeout: 0
+      tags: ['tempo']
 
-    # -------------------- 5️⃣ Icinga2 (manifest method - stable & portable) --------------------
+    # -------------------- 5️⃣ Icinga2 (manifests) --------------------
     - name: Deploy Icinga2 Deployment
       kubernetes.core.k8s:
         state: present
         src: "manifests/icinga-deployment.yaml"
+      tags: ['icinga']
 
     - name: Deploy Icinga2 Service
       kubernetes.core.k8s:
         state: present
         src: "manifests/icinga-service.yaml"
+      tags: ['icinga']
 
     # -------------------- 6️⃣ Prometheus Recording Rules (Scenario 1) --------------------
     - name: Apply PrometheusRule for Scenario 1 metrics
@@ -116,11 +121,13 @@
         state: present
         definition: "{{ lookup('file', 'files/rules/prometheusrule-scenario1.yaml') | from_yaml }}"
       register: scenario1_rules
+      tags: ['rule']
 
     - name: Wait for PrometheusRule to be registered
       ansible.builtin.pause:
-        seconds: 10
+        seconds: 8
       when: scenario1_rules.changed
+      tags: ['rule']
 
     # -------------------- 7️⃣ Grafana Provisioning --------------------
     - name: Clean up old Grafana ConfigMaps (if exist)
@@ -135,22 +142,25 @@
         - grafana-dashboard-provider
         - grafana-dashboard-scenario1
       ignore_errors: true
+      tags: ['grafana']
 
     - name: Create Grafana provisioning ConfigMap (Datasources)
       kubernetes.core.k8s:
         state: present
         definition: "{{ lookup('file', 'files/grafana/provisioning/datasources-configmap.yaml') | from_yaml }}"
+      tags: ['grafana']
 
     - name: Create Grafana provisioning ConfigMap (Dashboards)
       kubernetes.core.k8s:
         state: present
         definition: "{{ lookup('file', 'files/grafana/provisioning/dashboards-configmap.yaml') | from_yaml }}"
+      tags: ['grafana']
 
-    # -------------------- 8️⃣ Load Scenario 1 Dashboard --------------------
     - name: Deploy Scenario 1 Grafana dashboard ConfigMap
       kubernetes.core.k8s:
         state: present
         definition: "{{ lookup('template', 'manifests/grafana-dashboards-cm.yaml') | from_yaml }}"
+      tags: ['dash']
 
     - name: Restart Grafana pods to reload dashboard changes
       kubernetes.core.k8s:
@@ -164,14 +174,37 @@
               metadata:
                 annotations:
                   redeploy-timestamp: "{{ lookup('pipe', 'date +%s') }}"
+      tags: ['dash']
 
-    # -------------------- 9️⃣ Cluster Autoscaler metrics --------------------
-    - name: Expose Cluster Autoscaler metrics
+    # -------------------- 8️⃣ Cluster Autoscaler (Helm + metrics) --------------------
+    - name: Install / Upgrade Cluster Autoscaler (Helm)
+      kubernetes.core.helm:
+        name: cluster-autoscaler
+        chart_ref: autoscaler/cluster-autoscaler
+        release_namespace: kube-system
+        create_namespace: false
+        wait: true
+        timeout: 600s
+        chart_version: "{{ ca_chart_version }}"
+        values: "{{ lookup('file', 'files/values-cluster-autoscaler.yaml') | from_yaml }}"
+      tags: ['ca']
+
+    - name: Expose Cluster Autoscaler metrics (Service)
       kubernetes.core.k8s:
         state: present
         definition: "{{ lookup('file', 'manifests/service-cluster-autoscaler.yaml') | from_yaml }}"
+      tags: ['ca']
 
     - name: Create ServiceMonitor for Cluster Autoscaler
       kubernetes.core.k8s:
         state: present
         definition: "{{ lookup('file', 'manifests/servicemonitor-cluster-autoscaler.yaml') | from_yaml }}"
+      tags: ['ca']
+
+    # -------------------- 9️⃣ HPA cho ứng dụng PetClinic (Namespace: app_ns) --------------------
+    - name: Deploy HPA for PetClinic (api-gateway)
+      kubernetes.core.k8s:
+        state: present
+        src: manifests/hpa-petclinic.yaml
+      when: deploy_hpa_examples | default(true)
+      tags: ['hpa']

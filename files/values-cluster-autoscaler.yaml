@@ -1,29 +1,28 @@
-awsRegion: ap-southeast-1
 autoDiscovery:
   clusterName: eks-obser-cluster
-  tags:
-    - k8s.io/cluster-autoscaler/enabled
-    - k8s.io/cluster-autoscaler/eks-obser-cluster
 
-rbac:
-  serviceAccount:
-    create: true
-    name: cluster-autoscaler
-    annotations:
-      eks.amazonaws.com/role-arn: arn:aws:iam::<your-account-id>:role/AmazonEKSClusterAutoscalerRole
+awsRegion: ap-southeast-1
+sslCertPath: /etc/ssl/certs/ca-bundle.crt
 
 extraArgs:
-  logtostderr: true
-  v: 4
+  balance-similar-node-groups: true
   skip-nodes-with-system-pods: false
   expander: least-waste
-  balance-similar-node-groups: true
-  skip-nodes-with-local-storage: false
+  scale-down-delay-after-add: 2m
+  scan-interval: 10s
+  max-node-provision-time: 5m
+
+rbac:
+  create: true
+
+serviceMonitor:
+  enabled: true
+  interval: 15s
 
 resources:
-  limits:
-    cpu: 300m
-    memory: 300Mi
   requests:
-    cpu: 200m
-    memory: 200Mi
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

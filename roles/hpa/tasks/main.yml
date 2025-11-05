@@ -1,0 +1,6 @@
+---
+- name: 🧮 Deploy Horizontal Pod Autoscaler for PetClinic
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('file', 'files/manifests/hpa-petclinic.yaml') }}"
+  tags: ['hpa']

@@ -1,15 +1,16 @@
 ---
-- name: 🧠 Deploy Cluster Autoscaler via Helm
+- name: ⚙️ Deploy Cluster Autoscaler
   kubernetes.core.helm:
     name: cluster-autoscaler
     chart_ref: autoscaler/cluster-autoscaler
     release_namespace: kube-system
     create_namespace: false
     values_files:
-      - "{{ playbook_dir }}/files/grafana/rules/values-cluster-autoscaler.yaml"
-    state: present
-    update_repo_cache: true
-  register: ca_result
+      - "{{ playbook_dir }}/files/values-cluster-autoscaler.yaml"
+  tags: ['ca']
 
-- debug:
-    msg: "✅ Cluster Autoscaler deployed: {{ ca_result }}"
+- name: 🧩 Apply ServiceMonitor for Cluster Autoscaler
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('file', 'files/manifests/servicemonitor-cluster-autoscaler.yaml') }}"
+  tags: ['ca']

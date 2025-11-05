@@ -1,16 +1,35 @@
-
+# ====== Global namespaces ======
 monitoring_ns: monitoring
 app_ns: petclinic
+kube_context: eks-observability
 
+# ====== Grafana admin (nếu values-kps.yaml không override) ======
 grafana_admin_user: admin
 grafana_admin_password: admin123
 
-# Chart versions (can be adjusted as needed)
-kps_chart_version: "66.1.0"        # kube-prometheus-stack
+# ====== Chart versions ======
+kps_chart_version: "66.1.0"          # kube-prometheus-stack
+metrics_server_chart_version: "3.12.2"
 loki_chart_version: "6.6.3"
 promtail_chart_version: "6.15.3"
-tempo_chart_version: "1.11.2"
+tempo_chart_version: "1.24.0"
+ca_chart_version: "9.37.0"           # autoscaler/cluster-autoscaler
 
-# Feature toggles
+# ====== Feature toggles ======
 deploy_hpa_examples: true
-deploy_k6_job: true
+
+# ====== HPA thresholds (nếu cần render động trong manifest) ======
+hpa_thresholds:
+  cpu: 60
+  memory: 70
+  minReplicas: 3
+  maxReplicas: 10
+  target_deployment: api-gateway
+
+# ====== Cluster Autoscaler config (tham chiếu trong values-cluster-autoscaler.yaml) ======
+cluster_autoscaler:
+  cluster_name: eks-obser-cluster
+  region: ap-southeast-1
+  expander: least-waste
+  scan_interval: 10s
+  scale_down_delay_after_add: 2m
