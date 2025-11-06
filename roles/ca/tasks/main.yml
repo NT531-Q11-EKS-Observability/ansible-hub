@@ -1,16 +1,43 @@
 ---
-- name: ⚙️ Deploy Cluster Autoscaler
-  kubernetes.core.helm:
+# ============================================================
+# Cluster Autoscaler Role - Scenario 1 (Auto Scaling Pod + Node)
+# ============================================================
+
+- name: Deploy Cluster Autoscaler via Helm
+  community.kubernetes.helm:
     name: cluster-autoscaler
     chart_ref: autoscaler/cluster-autoscaler
     release_namespace: kube-system
-    create_namespace: false
     values_files:
-      - "{{ playbook_dir }}/files/values-cluster-autoscaler.yaml"
-  tags: ['ca']
+      - "{{ playbook_dir }}/../files/values-cluster-autoscaler.yaml"
+    create_namespace: false
+  register: ca_install
 
-- name: 🧩 Apply ServiceMonitor for Cluster Autoscaler
-  kubernetes.core.k8s:
-    state: present
-    definition: "{{ lookup('file', 'files/manifests/servicemonitor-cluster-autoscaler.yaml') }}"
-  tags: ['ca']
+- name: Wait until Cluster Autoscaler pod is running
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    namespace: kube-system
+    label_selectors:
+      - "app.kubernetes.io/name=cluster-autoscaler"
+  register: ca_pods
+  until: ca_pods.resources | selectattr('status.phase', 'equalto', 'Running') | list | length > 0
+  retries: 15
+  delay: 10
+
+- name: Log node scale-up events (ScaledUpGroup) for benchmarking
+  shell: |
+    echo "[ClusterAutoscaler Log] $(date)" >> /tmp/node-scale-events.log
+    kubectl get events -n kube-system --field-selector reason=ScaledUpGroup -o wide >> /tmp/node-scale-events.log
+  register: ca_log
+  ignore_errors: yes
+
+- name: Log node scale-down events (ScaledDownGroup) for benchmarking
+  shell: |
+    echo "[ClusterAutoscaler Log] $(date)" >> /tmp/node-scale-events.log
+    kubectl get events -n kube-system --field-selector reason=ScaledDownGroup -o wide >> /tmp/node-scale-events.log
+  ignore_errors: yes
+
+- name: Debug log of Cluster Autoscaler deployment
+  debug:
+    msg: "Cluster Autoscaler deployed successfully. Logs recorded to /tmp/node-scale-events.log"

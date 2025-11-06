@@ -1,11 +1,16 @@
-# Horizontal Pod Autoscaler - PetClinic Microservices
+# ============================================================
+# Horizontal Pod Autoscalers - PetClinic Microservices
 # Namespace: petclinic
+# ============================================================
 
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: api-gateway-hpa
   namespace: petclinic
+  labels:
+    app: api-gateway
+    scenario: "1"
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
@@ -26,12 +31,28 @@ spec:
         target:
           type: Utilization
           averageUtilization: 70
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 180
+      policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 60
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: customers-service-hpa
   namespace: petclinic
+  labels:
+    app: customers-service
+    scenario: "1"
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
@@ -52,12 +73,28 @@ spec:
         target:
           type: Utilization
           averageUtilization: 65
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 45
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 180
+      policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 60
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: visits-service-hpa
   namespace: petclinic
+  labels:
+    app: visits-service
+    scenario: "1"
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
@@ -78,12 +115,28 @@ spec:
         target:
           type: Utilization
           averageUtilization: 65
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 180
+      policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 60
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: vets-service-hpa
   namespace: petclinic
+  labels:
+    app: vets-service
+    scenario: "1"
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
@@ -104,3 +157,16 @@ spec:
         target:
           type: Utilization
           averageUtilization: 65
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 180
+      policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 60

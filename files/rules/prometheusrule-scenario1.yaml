@@ -5,6 +5,7 @@ metadata:
   namespace: monitoring
   labels:
     release: kps
+    scenario: "1"
 spec:
   groups:
     - name: scenario1.rules
@@ -14,17 +15,13 @@ spec:
         # 🧠 NODE STATUS & CLUSTER HEALTH
         # ============================================================
 
-        # Node Ready count
         - record: scenario1:node_ready
           expr: count(kube_node_status_condition{condition="Ready", status="true"})
-          labels:
-            category: node
+          labels: { category: node }
 
-        # Node NotReady (for quick detection)
         - record: scenario1:node_not_ready
           expr: count(kube_node_status_condition{condition="Ready", status!="true"})
-          labels:
-            category: node
+          labels: { category: node }
 
         # ============================================================
         # ⚙️ HPA (Horizontal Pod Autoscaler) METRICS
@@ -32,13 +29,11 @@ spec:
 
         - record: scenario1:hpa_desired
           expr: sum(kube_horizontalpodautoscaler_status_desired_replicas)
-          labels:
-            category: hpa
+          labels: { category: hpa }
 
         - record: scenario1:hpa_current
           expr: sum(kube_horizontalpodautoscaler_status_current_replicas)
-          labels:
-            category: hpa
+          labels: { category: hpa }
 
         # ============================================================
         # 🧩 POD DEPLOYMENT STATUS
@@ -46,54 +41,41 @@ spec:
 
         - record: scenario1:pod_desired
           expr: sum(kube_deployment_spec_replicas)
-          labels:
-            category: pod
+          labels: { category: pod }
 
         - record: scenario1:pod_ready
           expr: sum(kube_deployment_status_replicas_ready)
-          labels:
-            category: pod
+          labels: { category: pod }
 
         - record: scenario1:pod_pending
           expr: sum(kube_pod_status_phase{phase="Pending"})
-          labels:
-            category: pod
+          labels: { category: pod }
 
         # ============================================================
         # 🔋 RESOURCE UTILIZATION (CPU / MEMORY)
         # ============================================================
 
-        # CPU Usage (total cores)
         - record: scenario1:cpu_usage_cores
           expr: sum(rate(container_cpu_usage_seconds_total{image!=""}[1m]))
-          labels:
-            unit: cores
-            category: resource
+          labels: { unit: cores, category: resource }
 
-        # Memory Working Set (GB)
         - record: scenario1:mem_working_set_gb
           expr: sum(container_memory_working_set_bytes{image!=""}) / 1024 / 1024 / 1024
-          labels:
-            unit: gigabytes
-            category: resource
+          labels: { unit: gigabytes, category: resource }
 
-        # CPU Usage by Namespace (System / App / Monitor)
         - record: scenario1:cpu_usage_namespace
           expr: |
             sum by (namespace) (
               rate(container_cpu_usage_seconds_total{container!="",namespace!~"kube-system|monitoring"}[1m])
             )
-          labels:
-            category: namespace
+          labels: { category: namespace }
 
-        # Memory Usage by Namespace (System / App / Monitor)
         - record: scenario1:mem_usage_namespace
           expr: |
             sum by (namespace) (
               container_memory_working_set_bytes{container!="",namespace!~"kube-system|monitoring"}
             ) / 1024 / 1024 / 1024
-          labels:
-            category: namespace
+          labels: { category: namespace }
 
         # ============================================================
         # 🚀 CLUSTER AUTOSCALER EVENTS
@@ -102,9 +84,7 @@ spec:
         - alert: ClusterAutoscalerScaledUp
           expr: increase(cluster_autoscaler_scaled_up_nodes_total[5m]) > 0
           for: 1m
-          labels:
-            severity: warning
-            category: autoscaler
+          labels: { severity: warning, category: autoscaler }
           annotations:
             summary: "Cluster Autoscaler scaled up nodes"
             description: "Detected new nodes added by CA in the last 5 minutes."
@@ -112,23 +92,19 @@ spec:
         - alert: ClusterAutoscalerScaledDown
           expr: increase(cluster_autoscaler_scaled_down_nodes_total[5m]) > 0
           for: 1m
-          labels:
-            severity: info
-            category: autoscaler
+          labels: { severity: info, category: autoscaler }
           annotations:
             summary: "Cluster Autoscaler scaled down nodes"
             description: "Detected nodes removed by CA in the last 5 minutes."
 
         # ============================================================
-        # 🧯 HPA SCALING ALERTS
+        # 🧯 HPA SCALING ALERTS & LATENCY
         # ============================================================
 
         - alert: HPAScalingUp
           expr: increase(kube_horizontalpodautoscaler_status_current_replicas[5m]) > 0
           for: 1m
-          labels:
-            severity: info
-            category: hpa
+          labels: { severity: info, category: hpa }
           annotations:
             summary: "HPA scaled up workload"
             description: "Detected increase in pod replicas by HPA within 5 minutes."
@@ -136,9 +112,15 @@ spec:
         - alert: HPAScalingDown
           expr: increase(kube_horizontalpodautoscaler_status_current_replicas[5m]) < 0
           for: 1m
-          labels:
-            severity: info
-            category: hpa
+          labels: { severity: info, category: hpa }
           annotations:
             summary: "HPA scaled down workload"
             description: "Detected decrease in pod replicas by HPA within 5 minutes."
+
+        - alert: ScalingLatencyHigh
+          expr: increase(kube_pod_status_phase{phase="Pending"}[5m]) > 5
+          for: 5m
+          labels: { severity: warning, category: latency }
+          annotations:
+            summary: "Scaling latency cao"
+            description: "Pod mới mất >5 phút để chuyển từ Pending sang Running – scale-out chậm."
