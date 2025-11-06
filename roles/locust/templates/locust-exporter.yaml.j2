@@ -1,0 +1,35 @@
+# Service để Prometheus scrape metrics từ Locust pod
+apiVersion: v1
+kind: Service
+metadata:
+  name: locust-exporter
+  namespace: monitoring
+  labels:
+    app: locust-exporter
+spec:
+  selector:
+    # Scrape trực tiếp pod locust-hpa (hoặc bạn có thể đổi sang locust-ca)
+    app: locust-hpa
+  ports:
+    - name: metrics
+      port: 9646
+      targetPort: 9646
+      protocol: TCP
+  type: ClusterIP
+---
+# ServiceMonitor cho kube-prometheus-stack
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: locust-exporter
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: locust-exporter
+  endpoints:
+    - port: metrics
+      interval: 10s
+      scrapeTimeout: 5s

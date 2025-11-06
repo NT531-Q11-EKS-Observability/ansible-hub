@@ -1,13 +1,14 @@
 {
   "id": null,
   "uid": "scenario1-overview",
-  "title": "Scenario 1 - Auto Scaling Overview",
-  "tags": ["scenario1", "autoscaling", "eks"],
+  "title": "Scenario 1 - HPA Auto Scaling Detailed",
+  "tags": ["scenario1", "autoscaling", "hpa", "eks", "locust"],
   "timezone": "browser",
   "schemaVersion": 36,
-  "version": 7,
+  "version": 13,
   "refresh": "5s",
   "panels": [
+
     {
       "type": "row",
       "title": "🌐 Namespace Resource Breakdown",
@@ -19,26 +20,11 @@
       "title": "CPU Usage by Namespace (System / App / Monitor)",
       "datasource": "Prometheus",
       "targets": [
-        {
-          "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"kube-system|kube-node-lease|kube-public\"}[2m]))",
-          "legendFormat": "System"
-        },
-        {
-          "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"petclinic|default|backend|frontend|gateway\"}[2m]))",
-          "legendFormat": "App"
-        },
-        {
-          "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"monitoring|observability|loki|tempo|grafana\"}[2m]))",
-          "legendFormat": "Monitor"
-        }
+        { "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"kube-system|kube-node-lease|kube-public\"}[2m]))", "legendFormat": "System" },
+        { "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"petclinic|default|backend|frontend|gateway\"}[2m]))", "legendFormat": "App" },
+        { "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"monitoring|observability|loki|tempo|grafana\"}[2m]))", "legendFormat": "Monitor" }
       ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "cores",
-          "color": { "mode": "palette-classic" },
-          "custom": { "lineWidth": 2 }
-        }
-      },
+      "fieldConfig": { "defaults": { "unit": "cores", "color": { "mode": "palette-classic" } } },
       "gridPos": { "h": 6, "w": 12, "x": 0, "y": 1 }
     },
     {
@@ -46,26 +32,11 @@
       "title": "Memory Usage by Namespace (System / App / Monitor)",
       "datasource": "Prometheus",
       "targets": [
-        {
-          "expr": "sum(container_memory_working_set_bytes{namespace=~\"kube-system|kube-node-lease|kube-public\"}) / 1024 / 1024 / 1024",
-          "legendFormat": "System"
-        },
-        {
-          "expr": "sum(container_memory_working_set_bytes{namespace=~\"petclinic|default|backend|frontend|gateway\"}) / 1024 / 1024 / 1024",
-          "legendFormat": "App"
-        },
-        {
-          "expr": "sum(container_memory_working_set_bytes{namespace=~\"monitoring|observability|loki|tempo|grafana\"}) / 1024 / 1024 / 1024",
-          "legendFormat": "Monitor"
-        }
+        { "expr": "sum(container_memory_working_set_bytes{namespace=~\"kube-system|kube-node-lease|kube-public\"}) / 1024 / 1024 / 1024", "legendFormat": "System" },
+        { "expr": "sum(container_memory_working_set_bytes{namespace=~\"petclinic|default|backend|frontend|gateway\"}) / 1024 / 1024 / 1024", "legendFormat": "App" },
+        { "expr": "sum(container_memory_working_set_bytes{namespace=~\"monitoring|observability|loki|tempo|grafana\"}) / 1024 / 1024 / 1024", "legendFormat": "Monitor" }
       ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "gigabytes",
-          "color": { "mode": "palette-classic" },
-          "custom": { "lineWidth": 2 }
-        }
-      },
+      "fieldConfig": { "defaults": { "unit": "gigabytes" } },
       "gridPos": { "h": 6, "w": 12, "x": 12, "y": 1 }
     },
 
@@ -80,24 +51,9 @@
       "title": "CPU Usage per Node (%)",
       "datasource": "Prometheus",
       "targets": [
-        {
-          "expr": "avg(rate(node_cpu_seconds_total{mode!=\"idle\"}[2m])) by (instance) * 100",
-          "legendFormat": "{{instance}}"
-        }
+        { "expr": "avg(rate(node_cpu_seconds_total{mode!=\"idle\"}[2m])) by (instance) * 100", "legendFormat": "{{instance}}" }
       ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green" },
-              { "color": "orange", "value": 70 },
-              { "color": "red", "value": 90 }
-            ]
-          }
-        }
-      },
+      "fieldConfig": { "defaults": { "unit": "percent" } },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 }
     },
     {
@@ -105,10 +61,7 @@
       "title": "Memory Usage per Node (GB)",
       "datasource": "Prometheus",
       "targets": [
-        {
-          "expr": "(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes)/1024/1024/1024",
-          "legendFormat": "{{instance}}"
-        }
+        { "expr": "(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes)/1024/1024/1024", "legendFormat": "{{instance}}" }
       ],
       "fieldConfig": { "defaults": { "unit": "gigabytes" } },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 }
@@ -116,54 +69,88 @@
 
     {
       "type": "row",
-      "title": "📊 Cluster Summary",
+      "title": "⚙️ Locust Benchmark (Load Generation Metrics)",
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 }
     },
     {
-      "type": "stat",
-      "title": "Nodes Ready",
+      "type": "timeseries",
+      "title": "Total Requests per Second (RPS)",
       "datasource": "Prometheus",
-      "targets": [
-        { "expr": "count(kube_node_status_condition{condition=\"Ready\",status=\"true\"})", "legendFormat": "ready nodes" }
-      ],
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 17 }
+      "targets": [{ "expr": "locust_current_rps", "legendFormat": "Requests/s" }],
+      "fieldConfig": { "defaults": { "unit": "req/s", "color": { "mode": "continuous-GrYlRd" } } },
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 17 }
     },
     {
-      "type": "stat",
-      "title": "Pods Desired / Ready",
+      "type": "timeseries",
+      "title": "Response Time (p50 / p95)",
       "datasource": "Prometheus",
       "targets": [
-        { "expr": "sum(kube_deployment_spec_replicas)", "legendFormat": "desired" },
-        { "expr": "sum(kube_deployment_status_replicas_ready)", "legendFormat": "ready" }
+        { "expr": "locust_response_time_percentile{percentile=\"0.5\"}", "legendFormat": "p50" },
+        { "expr": "locust_response_time_percentile{percentile=\"0.95\"}", "legendFormat": "p95" }
       ],
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 17 }
+      "fieldConfig": { "defaults": { "unit": "ms" } },
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 17 }
     },
     {
-      "type": "stat",
-      "title": "HPA Desired / Current",
+      "type": "timeseries",
+      "title": "Number of Users (Concurrent Load)",
       "datasource": "Prometheus",
-      "targets": [
-        { "expr": "sum(kube_horizontalpodautoscaler_status_desired_replicas)", "legendFormat": "desired" },
-        { "expr": "sum(kube_horizontalpodautoscaler_status_current_replicas)", "legendFormat": "current" }
-      ],
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 17 }
+      "targets": [{ "expr": "locust_users", "legendFormat": "Users" }],
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 17 }
+    },
+
+    {
+      "type": "row",
+      "title": "📊 Cluster & HPA Summary (Dynamic Trends)",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 }
     },
     {
-      "type": "stat",
-      "title": "Pending Pods",
+      "type": "timeseries",
+      "title": "Pods Desired vs Ready (per Deployment)",
       "datasource": "Prometheus",
       "targets": [
-        { "expr": "sum(kube_pod_status_phase{phase=\"Pending\"})", "legendFormat": "pending" }
+        { "expr": "sum(kube_deployment_spec_replicas) by (deployment)", "legendFormat": "{{deployment}} Desired" },
+        { "expr": "sum(kube_deployment_status_replicas_ready) by (deployment)", "legendFormat": "{{deployment}} Ready" }
       ],
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 17 }
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 24 }
+    },
+    {
+      "type": "timeseries",
+      "title": "HPA Desired vs Current Replicas (per Deployment)",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "sum(kube_horizontalpodautoscaler_status_desired_replicas) by (deployment)", "legendFormat": "{{deployment}} Desired" },
+        { "expr": "sum(kube_horizontalpodautoscaler_status_current_replicas) by (deployment)", "legendFormat": "{{deployment}} Current" }
+      ],
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 24 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Pending Pods Over Time",
+      "datasource": "Prometheus",
+      "targets": [{ "expr": "sum(kube_pod_status_phase{phase=\"Pending\"})", "legendFormat": "Pending Pods" }],
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "orange" } } },
+      "gridPos": { "h": 5, "w": 12, "x": 0, "y": 31 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Node Count (Ready vs NotReady)",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "count(kube_node_status_condition{condition=\"Ready\",status=\"true\"})", "legendFormat": "Ready" },
+        { "expr": "count(kube_node_status_condition{condition=\"Ready\",status=\"false\"})", "legendFormat": "Not Ready" }
+      ],
+      "gridPos": { "h": 5, "w": 12, "x": 12, "y": 31 }
     },
 
     {
       "type": "row",
       "title": "⚙️ Auto Scaling Metrics (Pod + Node)",
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 21 }
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 36 }
     },
     {
       "type": "timeseries",
@@ -173,7 +160,7 @@
         { "expr": "increase(cluster_autoscaler_scaled_up_nodes_total[5m])", "legendFormat": "Scaled Up" },
         { "expr": "increase(cluster_autoscaler_scaled_down_nodes_total[5m])", "legendFormat": "Scaled Down" }
       ],
-      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 22 }
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 37 }
     },
     {
       "type": "timeseries",
@@ -183,72 +170,129 @@
         { "expr": "increase(kube_pod_created[5m])", "legendFormat": "Created" },
         { "expr": "increase(kube_pod_deleted[5m])", "legendFormat": "Deleted" }
       ],
-      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 22 }
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 37 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Scaling Latency (Pod Creation Delay)",
+      "datasource": "Prometheus",
+      "targets": [{ "expr": "rate(kube_pod_created[5m]) - rate(kube_pod_start_time_seconds[5m])", "legendFormat": "Creation Delay (s)" }],
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 37 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Correlation: Locust RPS vs HPA Desired Replicas",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "locust_current_rps", "legendFormat": "RPS (load)" },
+        { "expr": "sum(kube_horizontalpodautoscaler_status_desired_replicas)", "legendFormat": "HPA desired replicas" }
+      ],
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 43 }
     },
 
     {
       "type": "row",
       "title": "🚀 Application Performance (Locust + Prometheus)",
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 28 }
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 49 }
     },
     {
       "type": "timeseries",
       "title": "Latency (p95 / p99)",
       "datasource": "Prometheus",
       "targets": [
-        { "expr": "histogram_quantile(0.95, sum(rate(k6_http_req_duration_seconds_bucket[1m])) by (le))", "legendFormat": "p95" },
-        { "expr": "histogram_quantile(0.99, sum(rate(k6_http_req_duration_seconds_bucket[1m])) by (le))", "legendFormat": "p99" }
+        { "expr": "locust_response_time_percentile{percentile=\"0.95\"}", "legendFormat": "p95" },
+        { "expr": "locust_response_time_percentile{percentile=\"0.99\"}", "legendFormat": "p99" }
       ],
-      "fieldConfig": { "defaults": { "unit": "s" } },
-      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 29 }
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 50 }
     },
     {
       "type": "timeseries",
       "title": "HTTP Throughput (req/s)",
       "datasource": "Prometheus",
-      "targets": [
-        { "expr": "sum(rate(k6_http_reqs_total[1m]))", "legendFormat": "Requests/s" }
-      ],
-      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 29 }
+      "targets": [{ "expr": "locust_current_rps", "legendFormat": "Requests/s" }],
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 50 }
     },
     {
       "type": "timeseries",
       "title": "Error Rate (%)",
       "datasource": "Prometheus",
-      "targets": [
-        {
-          "expr": "sum(rate(k6_http_req_failed[1m])) / sum(rate(k6_http_reqs_total[1m])) * 100",
-          "legendFormat": "Error %"
-        }
-      ],
+      "targets": [{ "expr": "locust_fail_ratio * 100", "legendFormat": "Error %" }],
       "fieldConfig": { "defaults": { "unit": "percent" } },
-      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 29 }
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 50 }
     },
 
     {
       "type": "row",
       "title": "📜 Logs & Alerts",
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 35 }
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 56 }
     },
     {
       "type": "logs",
       "title": "Loki - Scaling Events",
       "datasource": "Loki",
-      "targets": [
-        { "expr": "{namespace=\"petclinic\"} |= \"Scaled\" or |= \"scale\"" }
-      ],
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 }
+      "targets": [{ "expr": "{namespace=\"petclinic\"} |= \"Scaled\" or |= \"scale\"" }],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 57 }
     },
     {
       "type": "table",
       "title": "Icinga2 Alerts (Nodes / Pods)",
       "datasource": "Icinga2",
+      "targets": [{ "expr": "icinga2_host_state" }],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 57 }
+    },
+
+    {
+      "type": "row",
+      "title": "📈 Integrated Overview (Scenario 1 Full)",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 65 }
+    },
+    {
+      "type": "timeseries",
+      "title": "RPS vs Latency vs Error Rate (%)",
+      "datasource": "Prometheus",
       "targets": [
-        { "expr": "icinga2_host_state" }
+        { "expr": "locust_current_rps", "legendFormat": "RPS" },
+        { "expr": "locust_response_time_percentile{percentile=\"0.95\"}", "legendFormat": "Latency (p95)" },
+        { "expr": "locust_fail_ratio * 100", "legendFormat": "Error Rate (%)" }
       ],
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 }
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 66 }
+    },
+    {
+      "type": "timeseries",
+      "title": "HPA Desired vs Current Replicas vs RPS",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "sum(kube_horizontalpodautoscaler_status_desired_replicas)", "legendFormat": "HPA Desired" },
+        { "expr": "sum(kube_horizontalpodautoscaler_status_current_replicas)", "legendFormat": "HPA Current" },
+        { "expr": "locust_current_rps", "legendFormat": "RPS" }
+      ],
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 74 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Cluster Autoscaler Node Scaling Events",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "increase(cluster_autoscaler_scaled_up_nodes_total[5m])", "legendFormat": "Scaled Up" },
+        { "expr": "increase(cluster_autoscaler_scaled_down_nodes_total[5m])", "legendFormat": "Scaled Down" }
+      ],
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 82 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Overall CPU & Memory Utilization (System vs App vs Monitor)",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"petclinic|backend|frontend|gateway\"}[2m]))", "legendFormat": "App CPU" },
+        { "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"monitoring|grafana|loki|tempo\"}[2m]))", "legendFormat": "Monitor CPU" },
+        { "expr": "sum(container_memory_working_set_bytes{namespace=~\"petclinic|backend|frontend|gateway\"}) / 1024 / 1024 / 1024", "legendFormat": "App Memory (GB)" },
+        { "expr": "sum(container_memory_working_set_bytes{namespace=~\"monitoring|grafana|loki|tempo\"}) / 1024 / 1024 / 1024", "legendFormat": "Monitor Memory (GB)" }
+      ],
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 90 }
     }
   ]
 }

@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: locust-hpa
+  namespace: monitoring
+  labels:
+    app: locust-hpa
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: locust-hpa
+  template:
+    metadata:
+      labels:
+        app: locust-hpa
+    spec:
+      containers:
+        - name: locust-hpa
+          image: locustio/locust:2.29.1
+          command:
+            - locust
+            - -f
+            - /scripts/locust-hpa.py
+            - --headless
+            - -u
+            - "50"
+            - -r
+            - "10"
+            - --run-time
+            - "15m"
+            - --host
+            - "http://tienphatng237.it.com"
+            - --enable-prometheus-exporter
+            - --prometheus-exporter-port
+            - "9646"
+          ports:
+            - containerPort: 9646
+              name: metrics
+          volumeMounts:
+            - name: locust-scripts
+              mountPath: /scripts
+      volumes:
+        - name: locust-scripts
+          configMap:
+            name: locust-hpa-scripts

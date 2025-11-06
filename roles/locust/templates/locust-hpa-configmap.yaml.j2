@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: locust-hpa-scripts
+  namespace: monitoring
+data:
+  locust-hpa.py: |
+{{ lookup('file', playbook_dir ~ '/files/locust-scripts/locust-hpa.py') | indent(4, true) }}

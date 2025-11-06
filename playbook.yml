@@ -208,3 +208,16 @@
         src: manifests/hpa-petclinic.yaml
       when: deploy_hpa_examples | default(true)
       tags: ['hpa']
+
+    # -------------------------------------------------------------
+    # 🚦 Deploy Locust load testing components (Scenario 1 + 2)
+    # -------------------------------------------------------------
+    - name: Deploy Locust Benchmark Tools (Scenario 1 + 2)
+      import_role:
+        name: locust
+      vars:
+        locust_base_path: "files/locust-scripts"
+        locust_scripts:
+          - "locust-hpa.py"
+          - "locust-ca.py"
+      tags: ['locust']

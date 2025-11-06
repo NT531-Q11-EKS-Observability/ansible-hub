@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: locust-ca
+  namespace: monitoring
+  labels:
+    app: locust-ca
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: locust-ca
+  template:
+    metadata:
+      labels:
+        app: locust-ca
+    spec:
+      containers:
+        - name: locust-ca
+          image: locustio/locust:2.29.1
+          command:
+            - locust
+            - -f
+            - /scripts/locust-ca.py
+            - --headless
+            - -u
+            - "100"
+            - -r
+            - "50"
+            - --run-time
+            - "20m"
+            - --host
+            - "http://tienphatng237.it.com"
+            - --enable-prometheus-exporter
+            - --prometheus-exporter-port
+            - "9646"
+          ports:
+            - containerPort: 9646
+              name: metrics
+          volumeMounts:
+            - name: locust-scripts
+              mountPath: /scripts
+      volumes:
+        - name: locust-scripts
+          configMap:
+            name: locust-ca-scripts

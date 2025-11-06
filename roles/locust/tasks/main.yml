@@ -1,0 +1,78 @@
+---
+# =============================================================
+# Role: locust
+# Purpose: Deploy Locust load-testing and exporter components
+# for Scenario 1 (HPA) & Scenario 2 (CA)
+# =============================================================
+
+# -------------------------------
+# 🧩 Scenario 1: HPA Benchmark
+# -------------------------------
+
+- name: 🧰 Generate Locust ConfigMap for HPA scenario
+  ansible.builtin.template:
+    src: "locust-hpa-configmap.yaml.j2"
+    dest: "/tmp/locust-hpa-configmap.yaml"
+  delegate_to: localhost
+
+- name: 🚀 Apply Locust ConfigMap for HPA scenario
+  kubernetes.core.k8s:
+    state: present
+    src: "/tmp/locust-hpa-configmap.yaml"
+  delegate_to: localhost
+
+- name: 🧰 Generate Locust Deployment for HPA scenario
+  ansible.builtin.template:
+    src: "locust-hpa.yaml.j2"
+    dest: "/tmp/locust-hpa.yaml"
+  delegate_to: localhost
+
+- name: 🚀 Apply Locust Deployment for HPA scenario
+  kubernetes.core.k8s:
+    state: present
+    src: "/tmp/locust-hpa.yaml"
+  delegate_to: localhost
+
+# -------------------------------
+# 🧩 Scenario 2: CA Benchmark
+# -------------------------------
+
+- name: 🧰 Generate Locust ConfigMap for CA scenario
+  ansible.builtin.template:
+    src: "locust-ca-configmap.yaml.j2"
+    dest: "/tmp/locust-ca-configmap.yaml"
+  delegate_to: localhost
+
+- name: 🚀 Apply Locust ConfigMap for CA scenario
+  kubernetes.core.k8s:
+    state: present
+    src: "/tmp/locust-ca-configmap.yaml"
+  delegate_to: localhost
+
+- name: 🧰 Generate Locust Deployment for CA scenario
+  ansible.builtin.template:
+    src: "locust-ca.yaml.j2"
+    dest: "/tmp/locust-ca.yaml"
+  delegate_to: localhost
+
+- name: 🚀 Apply Locust Deployment for CA scenario
+  kubernetes.core.k8s:
+    state: present
+    src: "/tmp/locust-ca.yaml"
+  delegate_to: localhost
+
+# -------------------------------
+# 📡 Locust Exporter (Prometheus)
+# -------------------------------
+
+- name: 🧰 Generate Locust Exporter Service + ServiceMonitor
+  ansible.builtin.template:
+    src: "locust-exporter.yaml.j2"
+    dest: "/tmp/locust-exporter.yaml"
+  delegate_to: localhost
+
+- name: 🚀 Apply Locust Exporter Service + ServiceMonitor
+  kubernetes.core.k8s:
+    state: present
+    src: "/tmp/locust-exporter.yaml"
+  delegate_to: localhost
