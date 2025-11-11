@@ -1,0 +1,51 @@
+# roles/loki/tasks/main.yml
+# ============================================================
+# Loki + Promtail Deployment Role
+# Used across all scenarios (1: HPA, 2: AZ Outage, 3: Svc2Svc)
+# ============================================================
+---
+- name: Ensure monitoring namespace exists
+  kubernetes.core.k8s:
+    name: monitoring
+    api_version: v1
+    kind: Namespace
+    state: present
+
+- name: Add/Update Grafana Helm repo (for Loki & Promtail)
+  kubernetes.core.helm_repository:
+    name: grafana
+    repo_url: "https://grafana.github.io/helm-charts"
+
+- name: Update Helm repositories
+  ansible.builtin.command: helm repo update
+  register: helm_update
+  changed_when: "'Update Complete' in helm_update.stdout"
+
+# Loki
+- name: Install Loki (Helm)
+  community.kubernetes.helm:
+    name: loki
+    chart_ref: grafana/loki
+    release_namespace: monitoring
+    create_namespace: true
+    values_files:
+      - "{{ playbook_dir }}/files/values-loki.yaml"
+    wait: true
+    timeout: 900
+
+# Promtail
+- name: Install Promtail (Helm)
+  community.kubernetes.helm:
+    name: promtail
+    chart_ref: grafana/promtail
+    release_namespace: monitoring
+    values_files:
+      - "{{ playbook_dir }}/files/values-promtail.yaml"
+    wait: true
+    timeout: 600
+
+# ServiceMonitor
+- name: Apply ServiceMonitor for Loki
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ playbook_dir }}/manifests/servicemonitor-loki.yaml"

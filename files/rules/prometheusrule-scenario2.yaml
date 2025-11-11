@@ -1,0 +1,65 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: scenario2-chaos-alerts
+  namespace: monitoring
+  labels:
+    role: alert-rules
+    scenario: chaos
+spec:
+  groups:
+  - name: chaos.node.rules
+    rules:
+    - alert: NodeCordonDetected
+      expr: kube_node_spec_unschedulable == 1
+      for: 2m
+      labels:
+        severity: warning
+        type: chaos
+      annotations:
+        summary: "Node cordoned during chaos test"
+        description: "A node in the cluster has been cordoned (unschedulable)."
+
+    - alert: NodeNotReadyAfterChaos
+      expr: count(kube_node_status_condition{condition="Ready",status!="true"}) > 0
+      for: 5m
+      labels:
+        severity: critical
+        type: chaos
+      annotations:
+        summary: "Node did not recover after chaos event"
+        description: "A node remained NotReady more than 5m after the chaos test."
+
+  - name: chaos.pod.rules
+    rules:
+    - alert: PodRestartSpike
+      expr: increase(kube_pod_container_status_restarts_total[5m]) > 5
+      for: 2m
+      labels:
+        severity: warning
+        type: chaos
+      annotations:
+        summary: "Pod restart spike detected"
+        description: "Pod restarts increased suddenly during chaos testing."
+
+    - alert: PodCrashLoopDetected
+      expr: kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"} > 0
+      for: 1m
+      labels:
+        severity: critical
+        type: chaos
+      annotations:
+        summary: "CrashLoopBackOff pods detected"
+        description: "Some pods are stuck in CrashLoopBackOff after chaos injection."
+
+  - name: chaos.network.rules
+    rules:
+    - alert: NetworkLatencyHigh
+      expr: rate(node_network_receive_errs_total[5m]) > 10
+      for: 3m
+      labels:
+        severity: warning
+        type: chaos
+      annotations:
+        summary: "High network errors detected"
+        description: "Network packet errors detected possibly due to chaos network delay."

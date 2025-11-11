@@ -1,5 +1,62 @@
 ---
-- name: Deploy Icinga2 monitoring
+- name: Ensure monitoring namespace exists
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: monitoring
+    state: present
+
+- name: Deploy Icinga2 base deployment
   kubernetes.core.k8s:
     state: present
-    definition: "{{ lookup('file', 'manifests/icinga.yaml') | from_yaml }}"
+    definition: "{{ lookup('file', 'manifests/icinga-deployment.yaml') | from_yaml }}"
+
+- name: Create admin user configuration for Icinga Web 2
+  kubernetes.core.k8s_exec:
+    namespace: monitoring
+    pod: "{{ lookup('pipe', 'kubectl get pods -n monitoring -l app=icinga2 -o jsonpath={.items[0].metadata.name}') }}"
+    command:
+      - bash
+      - -c
+      - |
+        mkdir -p /etc/icingaweb2/config/authentication /etc/icingaweb2/config/groups
+        cat <<'EOF' > /etc/icingaweb2/config/authentication.ini
+        [users]
+        backend = "ini"
+
+        [admin]
+        password = "$1$vH1wH0xx$iZ8GE1vK/fZHMI6jL6p2g."
+        EOF
+
+        cat <<'EOF' > /etc/icingaweb2/config/groups.ini
+        [admins]
+        users = "admin"
+        permissions = "*"
+        EOF
+
+        echo "[INFO] Default Icinga Web 2 admin user created (admin/admin)"
+
+- name: Deploy Icinga Helm chart with configuration
+  kubernetes.core.helm:
+    name: icinga
+    chart_ref: icinga/icinga2
+    release_namespace: monitoring
+    values_files:
+      - "{{ role_path }}/templates/icinga-values.yaml"
+    wait: true
+    timeout: 900
+
+- name: Apply PrometheusRule for Scenario 1 (HPA + CA)
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('file', role_path + '/templates/prometheus-rules-scenario1.yaml') | from_yaml }}"
+
+- name: Display completion message
+  debug:
+    msg: |
+      ✅ Icinga2 deployed successfully with Prometheus-based alerts.
+      ➤ Default login: admin / admin
+      Scenario 1 (Auto Scaling Pod + Node) rules for HPA & CA applied.
+      View alerts in:
+        • Grafana → Dashboard “Scenario1 Overview”
+        • Icinga Web 2 → Monitoring > Prometheus Alerts

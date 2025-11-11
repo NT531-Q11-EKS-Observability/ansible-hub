@@ -3,8 +3,20 @@ global:
     runAsUser: 1000
     fsGroup: 1000
 
+  api:
+    users:
+      director:
+        password:
+          value: "icinga-director-pass"
+      icingaweb:
+        password:
+          value: "icingaweb-api-pass"
+
 icingaweb2:
   enabled: true
+  adminUser: "admin"
+  adminPassword: "admin"
+
   ingress:
     enabled: true
     className: alb
@@ -15,3 +27,34 @@ icingaweb2:
       - host: icingaweb.tienphatng237.it.com
         paths:
           - /
+
+  config:
+    modules:
+      director:
+        enabled: true
+      grafana:
+        enabled: true
+      monitoring:
+        enabled: true
+
+    # Icinga đọc alert từ Prometheus (kube-prometheus-stack)
+    prometheus:
+      url: http://prometheus-operated.monitoring.svc.cluster.local:9090
+      interval: 30s
+      alerts:
+        enabled: true
+        filter:
+          namespace: petclinic
+        labels:
+          - severity
+          - type
+
+  # Tích hợp Grafana hiển thị dashboard
+  grafana:
+    enabled: true
+    url: http://grafana.monitoring.svc.cluster.local:3000
+    access: proxy
+    dashboards:
+      enabled: true
+      folders:
+        - "Scenario 1 - Auto Scaling"

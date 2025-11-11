@@ -1,8 +1,44 @@
+# files/values-promtail.yaml
 config:
   clients:
-    - url: http://loki:3100/loki/api/v1/push
+    - url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+
   snippets:
     pipelineStages:
       - docker: {}
+      - cri: {}
+      - multiline:
+          firstline: '^\d{4}-\d{2}-\d{2}'
+          max_wait_time: 3s
+      - labels:
+          app: "{{ .Values.app | default \"unknown\" }}"
+          namespace: "{{ .Values.namespace | default \"unknown\" }}"
+          pod: "{{ .Values.pod | default \"unknown\" }}"
+      - output:
+          source: stdout
+
+  positions:
+    filename: /var/log/promtail/positions.yaml
+
+extraVolumes:
+  - name: positions
+    emptyDir: {}
+
+extraVolumeMounts:
+  - name: positions
+    mountPath: /var/log/promtail
+
 daemonset:
   enabled: true
+
+extraScrapeConfigs: |
+  - job_name: kubernetes-pods
+    kubernetes_sd_configs:
+      - role: pod
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        target_label: app
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod

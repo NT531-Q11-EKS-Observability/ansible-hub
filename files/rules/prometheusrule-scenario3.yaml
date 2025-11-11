@@ -1,0 +1,65 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: scenario3-recovery-alerts
+  namespace: monitoring
+  labels:
+    role: alert-rules
+    scenario: recovery
+spec:
+  groups:
+  - name: recovery.node.rules
+    rules:
+    - alert: NodeAutoRecovered
+      expr: increase(kube_node_status_condition{condition="Ready",status="true"}[5m]) > 0
+      for: 1m
+      labels:
+        severity: info
+        type: recovery
+      annotations:
+        summary: "Node recovered successfully"
+        description: "A previously NotReady node returned to Ready status."
+
+    - alert: NodeRecoveryTimeout
+      expr: count(kube_node_status_condition{condition="Ready",status!="true"}) > 0
+      for: 10m
+      labels:
+        severity: critical
+        type: recovery
+      annotations:
+        summary: "Node recovery timeout"
+        description: "Node failed to become Ready after 10 minutes of failure."
+
+  - name: recovery.pod.rules
+    rules:
+    - alert: PodRescheduled
+      expr: increase(kube_pod_status_phase{phase="Running"}[5m]) > 3
+      for: 2m
+      labels:
+        severity: info
+        type: recovery
+      annotations:
+        summary: "Pods rescheduled successfully"
+        description: "Pods were automatically rescheduled after disruption."
+
+    - alert: PodUnrecovered
+      expr: kube_pod_status_phase{phase!="Running"} > 0
+      for: 10m
+      labels:
+        severity: critical
+        type: recovery
+      annotations:
+        summary: "Pods not recovered"
+        description: "Some pods have not returned to Running phase after recovery test."
+
+  - name: recovery.service.rules
+    rules:
+    - alert: ServiceUnreachable
+      expr: probe_success == 0
+      for: 2m
+      labels:
+        severity: critical
+        type: recovery
+      annotations:
+        summary: "Service unreachable after chaos"
+        description: "Blackbox probe failed, service still unreachable after recovery window."

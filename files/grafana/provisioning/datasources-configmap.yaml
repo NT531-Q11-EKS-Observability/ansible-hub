@@ -4,25 +4,45 @@ metadata:
   name: grafana-datasources
   namespace: monitoring
   labels:
+    grafana_datasource: "1"      # ⚡ dùng label chuẩn để Grafana sidecar tự nhận
     app: grafana
 data:
   datasources.yaml: |
     apiVersion: 1
     datasources:
+      # 🟢 Prometheus - metrics source
       - name: Prometheus
         type: prometheus
         url: http://kps-kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
         access: proxy
         isDefault: true
+        editable: true
+
+      # 🟣 Loki - logs source (fix endpoint qua Gateway)
       - name: Loki
         type: loki
-        url: http://loki.monitoring.svc.cluster.local:3100
+        url: http://loki-gateway.monitoring.svc.cluster.local
         access: proxy
+        editable: true
+        jsonData:
+          maxLines: 1000
+          timeout: 60
+          derivedFields:
+            - datasourceUid: tempo
+              matcherRegex: "traceID=(\\w+)"
+              name: TraceID
+              url: "$${__value.raw}"
+
+      # 🟠 Tempo - tracing source
       - name: Tempo
         type: tempo
         url: http://tempo-query-frontend.monitoring.svc.cluster.local:3200
         access: proxy
+        editable: true
+
+      # 🔵 Icinga2 - alert monitoring
       - name: Icinga2
         type: icinga2
         url: http://icinga2.monitoring.svc.cluster.local:8080
         access: proxy
+        editable: true

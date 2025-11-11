@@ -1,12 +1,38 @@
 grafana:
   adminUser: admin
   adminPassword: admin123
+
   service:
     type: ClusterIP
+
   ingress:
     enabled: false
+
   persistence:
     enabled: false
+
+  # ✅ Sidecar để tự động load dashboards và datasources
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      folder: /var/lib/grafana/dashboards   # <== trỏ đúng path
+      searchNamespace: ALL
+    datasources:
+      enabled: true
+      label: grafana_datasource
+      searchNamespace: ALL
+
+  grafana.ini:
+    paths:
+      provisioning: /etc/grafana/provisioning
+    dashboards:
+      default_home_dashboard_path: /var/lib/grafana/dashboards/scenario1-overview.json
+    log:
+      mode: console
+      level: info
+    analytics:
+      reporting_enabled: false
 
 alertmanager:
   enabled: true

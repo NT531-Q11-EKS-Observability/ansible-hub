@@ -1,0 +1,167 @@
+{
+  "id": null,
+  "uid": "scenario-loki-final",
+  "title": "Scenario 1–3 | Loki Logs (HPA, CA, Chaos & Recovery)",
+  "schemaVersion": 38,
+  "version": 6,
+  "refresh": "10s",
+  "time": { "from": "now-30m", "to": "now" },
+  "panels": [
+    {
+      "type": "row",
+      "title": "🌿 Scenario 1 – HPA & Cluster Autoscaling",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }
+    },
+    {
+      "type": "timeseries",
+      "title": "📊 Log Volume by Namespace (last 5m)",
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [
+        {
+          "expr": "sum(rate({namespace!=\"\"}[5m])) by (namespace)",
+          "legendFormat": "{{namespace}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "ops", "custom": { "drawStyle": "lines", "lineWidth": 2 } },
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": "kube-system" },
+            "properties": [{ "id": "color", "value": "#42A5F5" }]
+          },
+          {
+            "matcher": { "id": "byRegexp", "options": "monitoring" },
+            "properties": [{ "id": "color", "value": "#AB47BC" }]
+          },
+          {
+            "matcher": { "id": "byRegexp", "options": "load-testing" },
+            "properties": [{ "id": "color", "value": "#FB8C00" }]
+          },
+          {
+            "matcher": { "id": "byRegexp", "options": "petclinic" },
+            "properties": [{ "id": "color", "value": "#66BB6A" }]
+          }
+        ]
+      },
+      "gridPos": { "x": 0, "y": 1, "w": 12, "h": 8 },
+      "options": { "legend": { "showLegend": true, "placement": "bottom" } }
+    },
+    {
+      "type": "timeseries",
+      "title": "🧩 Log Count by Pod (petclinic)",
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [
+        {
+          "expr": "sum(rate({namespace=\"petclinic\"}[5m])) by (pod)",
+          "legendFormat": "{{pod}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "ops", "custom": { "drawStyle": "lines", "lineWidth": 2 } },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "api-gateway" }, "properties": [{ "id": "color", "value": "#FFA726" }] },
+          { "matcher": { "id": "byRegexp", "options": "config-server" }, "properties": [{ "id": "color", "value": "#AB47BC" }] },
+          { "matcher": { "id": "byRegexp", "options": "customers-service" }, "properties": [{ "id": "color", "value": "#66BB6A" }] },
+          { "matcher": { "id": "byRegexp", "options": "visits-service" }, "properties": [{ "id": "color", "value": "#EF5350" }] },
+          { "matcher": { "id": "byRegexp", "options": "vets-service" }, "properties": [{ "id": "color", "value": "#FFEE58" }] },
+          { "matcher": { "id": "byRegexp", "options": "admin-server" }, "properties": [{ "id": "color", "value": "#42A5F5" }] },
+          { "matcher": { "id": "byRegexp", "options": "discovery-server" }, "properties": [{ "id": "color", "value": "#26C6DA" }] }
+        ]
+      },
+      "gridPos": { "x": 12, "y": 1, "w": 12, "h": 8 },
+      "options": { "legend": { "showLegend": true, "placement": "bottom" } }
+    },
+    {
+      "type": "timeseries",
+      "title": "🚨 Error Logs Rate (petclinic)",
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [
+        {
+          "expr": "sum(rate({namespace=\"petclinic\"} |= \"ERROR\"[5m])) by (pod)",
+          "legendFormat": "{{pod}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "ops", "custom": { "drawStyle": "lines", "lineWidth": 2 } },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "api-gateway" }, "properties": [{ "id": "color", "value": "#FFA726" }] },
+          { "matcher": { "id": "byRegexp", "options": "admin-server" }, "properties": [{ "id": "color", "value": "#42A5F5" }] },
+          { "matcher": { "id": "byRegexp", "options": "customers-service" }, "properties": [{ "id": "color", "value": "#66BB6A" }] }
+        ]
+      },
+      "gridPos": { "x": 0, "y": 9, "w": 24, "h": 6 },
+      "options": { "legend": { "showLegend": true, "placement": "bottom" } }
+    },
+    {
+      "type": "row",
+      "title": "🔥 Scenario 2 – Chaos Simulation (Pod Eviction & Reschedule)",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 15, "w": 24, "h": 1 }
+    },
+    {
+      "type": "timeseries",
+      "title": "⚡ Pod Eviction / Reschedule Events (Chaos Simulation)",
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [
+        {
+          "expr": "sum(rate({namespace=\"petclinic\"} |= \"Evicted\"[5m])) by (pod)",
+          "legendFormat": "{{pod}}",
+          "refId": "A"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 16, "w": 24, "h": 6 },
+      "fieldConfig": {
+        "defaults": { "unit": "ops", "custom": { "drawStyle": "lines", "lineWidth": 2 } },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "discovery-server" }, "properties": [{ "id": "color", "value": "#26C6DA" }] },
+          { "matcher": { "id": "byRegexp", "options": "api-gateway" }, "properties": [{ "id": "color", "value": "#FFA726" }] }
+        ]
+      }
+    },
+    {
+      "type": "row",
+      "title": "💬 Scenario 3 – Recovery & Service Communication",
+      "collapsed": false,
+      "gridPos": { "x": 0, "y": 22, "w": 24, "h": 1 }
+    },
+    {
+      "type": "timeseries",
+      "title": "🔁 Service Communication Logs (Recovery)",
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [
+        {
+          "expr": "sum(rate({namespace=\"petclinic\"} |= \"Resolving\"[5m])) by (pod)",
+          "legendFormat": "{{pod}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "ops", "custom": { "drawStyle": "lines", "lineWidth": 2 } },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "api-gateway" }, "properties": [{ "id": "color", "value": "#FFA726" }] },
+          { "matcher": { "id": "byRegexp", "options": "discovery-server" }, "properties": [{ "id": "color", "value": "#26C6DA" }] },
+          { "matcher": { "id": "byRegexp", "options": "customers-service" }, "properties": [{ "id": "color", "value": "#66BB6A" }] },
+          { "matcher": { "id": "byRegexp", "options": "admin-server" }, "properties": [{ "id": "color", "value": "#42A5F5" }] }
+        ]
+      },
+      "gridPos": { "x": 0, "y": 23, "w": 24, "h": 6 }
+    },
+    {
+      "type": "logs",
+      "title": "🕵️ Recent Log Stream (All Petclinic Pods)",
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "targets": [{ "expr": "{namespace=\"petclinic\"}", "refId": "A" }],
+      "options": {
+        "showLabels": true,
+        "showTime": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
+      "gridPos": { "x": 0, "y": 29, "w": 24, "h": 12 }
+    }
+  ]
+}

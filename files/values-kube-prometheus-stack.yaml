@@ -2,9 +2,11 @@ grafana:
   enabled: true
   adminUser: {{ grafana_admin_user | quote }}
   adminPassword: {{ grafana_admin_password | quote }}
+
   service:
     type: ClusterIP
     port: 80
+
   persistence:
     enabled: true
     storageClassName: {{ storage_class }}
@@ -43,6 +45,7 @@ grafana:
       access: proxy
       url: http://loki:3100
       isDefault: false
+
     - name: Tempo
       type: tempo
       access: proxy
@@ -67,12 +70,27 @@ prometheus:
           resources:
             requests:
               storage: {{ prometheus_storage }}
+
+    # Bật thu metrics cho HPA và Cluster Autoscaler
     podMonitorSelectorNilUsesHelmValues: false
     serviceMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false
 
 alertmanager:
   enabled: true
+  alertmanagerSpec:
+    # 🔐 Trỏ tới Secret chứa cấu hình gửi Gmail
+    configSecret: alertmanager-gmail
+    replicas: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 300m
+        memory: 256Mi
+    retention: 120h
+    logLevel: info
 
 kube-state-metrics:
   enabled: true

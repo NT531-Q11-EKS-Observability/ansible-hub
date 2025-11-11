@@ -1,0 +1,51 @@
+{
+  "uid": "scenario3-recovery",
+  "title": "Scenario 3 - Failure & Recovery Overview",
+  "tags": ["scenario3", "recovery", "resilience"],
+  "timezone": "browser",
+  "schemaVersion": 36,
+  "refresh": "10s",
+  "panels": [
+    {
+      "type": "row",
+      "title": "🩺 Recovery Metrics Overview",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Node Recovery Events",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "increase(kube_node_status_condition{condition=\"Ready\",status=\"true\"}[5m])", "legendFormat": "Nodes Recovered" }
+      ],
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 1 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Pod Reschedule Count",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "increase(kube_pod_status_phase{phase=\"Running\"}[5m])", "legendFormat": "Pods Rescheduled" }
+      ],
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 1 }
+    },
+    {
+      "type": "logs",
+      "title": "Loki - Recovery Logs",
+      "datasource": "Loki",
+      "targets": [
+        { "expr": "{namespace=\"petclinic\"} |= \"Recovered\" or |= \"Restarted\" or |= \"BackOnline\"" }
+      ],
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 7 }
+    },
+    {
+      "type": "table",
+      "title": "Active Recovery Alerts",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "ALERTS{alertstate=\"firing\",type=\"recovery\"}" }
+      ],
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 15 }
+    }
+  ]
+}

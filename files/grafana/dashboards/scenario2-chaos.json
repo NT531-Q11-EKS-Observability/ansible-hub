@@ -1,0 +1,52 @@
+{
+  "uid": "scenario2-chaos",
+  "title": "Scenario 2 - Chaos Test Overview",
+  "tags": ["scenario2", "chaos", "resilience"],
+  "timezone": "browser",
+  "schemaVersion": 36,
+  "refresh": "10s",
+  "panels": [
+    {
+      "type": "row",
+      "title": "🔥 Chaos Event Overview",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "type": "logs",
+      "title": "Loki - Chaos Injection Logs",
+      "datasource": "Loki",
+      "targets": [
+        { "expr": "{namespace=\"monitoring\"} |= \"chaos\" or |= \"kill\" or |= \"delay\"" }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Pod Restarts During Chaos",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "increase(kube_pod_container_status_restarts_total[5m])", "legendFormat": "Restarts" }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Node Status (Ready / NotReady)",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "count(kube_node_status_condition{condition=\"Ready\",status=\"true\"})", "legendFormat": "Ready" },
+        { "expr": "count(kube_node_status_condition{condition=\"Ready\",status!=\"true\"})", "legendFormat": "NotReady" }
+      ],
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 9 }
+    },
+    {
+      "type": "table",
+      "title": "Active Chaos Alerts",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "ALERTS{alertstate=\"firing\",type=\"chaos\"}" }
+      ],
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 15 }
+    }
+  ]
+}

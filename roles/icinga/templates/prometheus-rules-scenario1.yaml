@@ -1,0 +1,65 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: scenario1-alerts
+  namespace: monitoring
+  labels:
+    role: alert-rules
+    scenario: autoscaling
+spec:
+  groups:
+  - name: hpa.rules
+    rules:
+    - alert: HPA_HighMemoryUtilization
+      expr: avg(kube_pod_container_resource_requests_memory_bytes{namespace="petclinic"}) /
+            avg(kube_pod_container_resource_usage_bytes{namespace="petclinic"}) > 0.7
+      for: 2m
+      labels:
+        severity: warning
+        type: hpa
+      annotations:
+        summary: "Pod memory utilization > 70%"
+        description: "Pods in namespace petclinic are exceeding the memory utilization target (70%)."
+
+    - alert: HPA_NotScaling
+      expr: kube_hpa_status_current_replicas{namespace="petclinic",hpa="petclinic-hpa"} <
+            kube_hpa_status_desired_replicas{namespace="petclinic",hpa="petclinic-hpa"}
+      for: 3m
+      labels:
+        severity: critical
+        type: hpa
+      annotations:
+        summary: "HPA not scaling fast enough"
+        description: "Petclinic HPA desired replicas > current replicas for over 3 minutes."
+
+  - name: cluster-autoscaler.rules
+    rules:
+    - alert: NodeNotReady
+      expr: count(kube_node_status_condition{condition="Ready",status!="true"}) > 0
+      for: 2m
+      labels:
+        severity: critical
+        type: ca
+      annotations:
+        summary: "One or more nodes are NotReady"
+        description: "Some EKS nodes are NotReady or unreachable."
+
+    - alert: ClusterAutoscalerTriggered
+      expr: increase(cluster_autoscaler_scaled_nodes_total[5m]) > 0
+      for: 30s
+      labels:
+        severity: info
+        type: ca
+      annotations:
+        summary: "Cluster Autoscaler triggered"
+        description: "EKS Cluster Autoscaler added new node(s) during scale-out event."
+
+    - alert: ClusterAutoscalerScaleDown
+      expr: increase(cluster_autoscaler_unneeded_nodes_total[10m]) > 0
+      for: 1m
+      labels:
+        severity: info
+        type: ca
+      annotations:
+        summary: "Cluster Autoscaler removed node(s)"
+        description: "Node scale-down occurred to balance utilization in cluster."

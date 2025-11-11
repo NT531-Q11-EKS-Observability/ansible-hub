@@ -1,10 +1,14 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: grafana-dashboard-scenario1
+  name: grafana-dashboards
   namespace: monitoring
   labels:
     grafana_dashboard: "1"
 data:
   scenario1-overview.json: |
     {{ lookup('file', 'files/grafana/dashboards/scenario1-overview.json') | indent(4) }}
+  scenario2-chaos.json: |
+    {{ lookup('file', 'files/grafana/dashboards/scenario2-chaos.json') | indent(4) }}
+  scenario3-failure-recovery.json: |
+    {{ lookup('file', 'files/grafana/dashboards/scenario3-failure-recovery.json') | indent(4) }}

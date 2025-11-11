@@ -10,12 +10,12 @@ data:
   dashboards.yaml: |
     apiVersion: 1
     providers:
-      - name: "Scenario1"
+      - name: "EKS Observability Dashboards"
         orgId: 1
-        folder: "Scenario 1 - Auto Scaling"
+        folder: ""
         type: file
         disableDeletion: false
         editable: true
         updateIntervalSeconds: 10
         options:
-          path: /var/lib/grafana/dashboards
+          path: /var/lib/grafana/dashboards   # ✅ trỏ đến nơi mount ConfigMap dashboards

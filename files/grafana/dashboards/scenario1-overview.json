@@ -2,10 +2,10 @@
   "id": null,
   "uid": "scenario1-overview",
   "title": "Scenario 1 - HPA Auto Scaling Detailed",
-  "tags": ["scenario1", "autoscaling", "hpa", "eks", "locust"],
+  "tags": ["scenario1", "autoscaling", "hpa", "eks", "locust", "observability"],
   "timezone": "browser",
   "schemaVersion": 36,
-  "version": 13,
+  "version": 14,
   "refresh": "5s",
   "panels": [
 
@@ -65,40 +65,6 @@
       ],
       "fieldConfig": { "defaults": { "unit": "gigabytes" } },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 }
-    },
-
-    {
-      "type": "row",
-      "title": "⚙️ Locust Benchmark (Load Generation Metrics)",
-      "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 }
-    },
-    {
-      "type": "timeseries",
-      "title": "Total Requests per Second (RPS)",
-      "datasource": "Prometheus",
-      "targets": [{ "expr": "locust_current_rps", "legendFormat": "Requests/s" }],
-      "fieldConfig": { "defaults": { "unit": "req/s", "color": { "mode": "continuous-GrYlRd" } } },
-      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 17 }
-    },
-    {
-      "type": "timeseries",
-      "title": "Response Time (p50 / p95)",
-      "datasource": "Prometheus",
-      "targets": [
-        { "expr": "locust_response_time_percentile{percentile=\"0.5\"}", "legendFormat": "p50" },
-        { "expr": "locust_response_time_percentile{percentile=\"0.95\"}", "legendFormat": "p95" }
-      ],
-      "fieldConfig": { "defaults": { "unit": "ms" } },
-      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 17 }
-    },
-    {
-      "type": "timeseries",
-      "title": "Number of Users (Concurrent Load)",
-      "datasource": "Prometheus",
-      "targets": [{ "expr": "locust_users", "legendFormat": "Users" }],
-      "fieldConfig": { "defaults": { "unit": "short" } },
-      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 17 }
     },
 
     {
